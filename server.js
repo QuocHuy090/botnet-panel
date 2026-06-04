@@ -19,9 +19,26 @@ app.use((req, res, next) => {
     next();
 });
 
+const fs = require('fs');
 let bots = {};
 let pendingCommands = {};
 let infoData = {};
+
+// Tự động load bot từ file khi khởi động
+try {
+    if (fs.existsSync('/tmp/bots.json')) {
+        bots = JSON.parse(fs.readFileSync('/tmp/bots.json', 'utf8'));
+        console.log('Loaded', Object.keys(bots).length, 'bots from file');
+    }
+} catch(e) {}
+
+// Lưu bot mỗi 30 giây
+setInterval(() => {
+    try {
+        fs.writeFileSync('/tmp/bots.json', JSON.stringify(bots));
+        fs.writeFileSync('/tmp/infoData.json', JSON.stringify(infoData));
+    } catch(e) {}
+}, 30000);
 
 setInterval(() => {
     let now = new Date();
