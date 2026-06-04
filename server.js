@@ -19,7 +19,7 @@ app.use((req, res, next) => {
     next();
 });
 
-const fs = require('fs');
+
 let bots = {};
 let pendingCommands = {};
 let infoData = {};
