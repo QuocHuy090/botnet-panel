@@ -7,6 +7,8 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.json({ limit: '50mb' }));
+app.use(express.text({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 app.use('/methods', express.static('methods'));
 app.use((req, res, next) => {
