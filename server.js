@@ -389,7 +389,7 @@ wss.on('connection', (ws, req) => {
                     const pendingCmds = db.prepare("SELECT * FROM commands WHERE bot_id=? AND status='pending' ORDER BY created_at ASC LIMIT 5").all(botId);
                     pendingCmds.forEach(cmd => {
                         ws.send(JSON.stringify({ type: 'command', command_id: cmd.command_id, command_type: cmd.command_type, command_data: JSON.parse(cmd.command_data||'{}') }));
-                        db.prepare("UPDATE commands SET status='sent', executed_at=CURRENT_TIMESTAMP WHERE command_id=?").run(cmd.command_id);
+                        
                     });
                 }
                 return;
