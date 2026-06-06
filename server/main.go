@@ -71,7 +71,6 @@ func main() {
     }
     
     // Cho phep login khong can JWT
-    router.POST("/api/login", HandleLogin)
     
     // WebSocket endpoints
     router.GET("/ws", HandleBotWebSocket)
