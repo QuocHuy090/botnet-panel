@@ -382,6 +382,14 @@ wss.on('connection', (ws, req) => {
 setInterval(() => { wss.clients.forEach(ws => { if (ws.isAlive === false) return ws.terminate(); ws.isAlive = false; ws.ping(); }); }, 30000);
 
 server.listen(PORT, () => {
+    // Tự động set offline bot không heartbeat sau 120 giây
+setInterval(() => {
+    if (dbMode === 'better-sqlite3') {
+        db.prepare("UPDATE bots SET status='offline' WHERE status='online' AND last_seen < datetime('now', '-2 minutes')").run();
+    } else {
+        db.run("UPDATE bots SET status='offline' WHERE status='online' AND last_seen < datetime('now', '-2 minutes')");
+    }
+}, 30000);
     console.log(`[+] Server running on port ${PORT}`);
     console.log(`[+] API: http://localhost:${PORT}/api`);
     console.log(`[+] WebSocket: ws://localhost:${PORT}`);
