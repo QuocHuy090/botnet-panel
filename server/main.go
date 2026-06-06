@@ -121,7 +121,7 @@ func main() {
         if err := server.ListenAndServe(); err != nil {
         log.Fatal("[SERVER] Loi khoi dong server: ", err)
     }
-
+}
 // Tu sinh chung chi TLS su dung ECDSA P-256
 func generateSelfSignedCert(certFile string, keyFile string) {
     // Tao private key
