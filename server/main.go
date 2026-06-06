@@ -99,10 +99,7 @@ func main() {
             limiter.Cleanup()
         }
     }()
-    
-    // Kiem tra TLS cert, neu chua co thi tu sinh
 
-    
     // Tao TLS config
     tlsConfig := &tls.Config{
         MinVersion: tls.VersionTLS12,
@@ -121,11 +118,9 @@ func main() {
     log.Printf("[SERVER] Dang lang nghe tren cang %s (TLS)", AppConfig.Port)
     log.Printf("[SERVER] Web Panel: https://%s:%s/", AppConfig.Domain, AppConfig.Port)
     
-    server.ListenAndServe()
-    if err != nil {
+        if err := server.ListenAndServe(); err != nil {
         log.Fatal("[SERVER] Loi khoi dong server: ", err)
     }
-}
 
 // Tu sinh chung chi TLS su dung ECDSA P-256
 func generateSelfSignedCert(certFile string, keyFile string) {
