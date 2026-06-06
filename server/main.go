@@ -56,10 +56,11 @@ func main() {
         api.GET("/health", HandleHealthCheck)
         
         // Endpoints cho admin (can JWT)
+               api.POST("/login", HandleLogin)
+        
         admin := api.Group("")
         admin.Use(JWTAuthMiddleware())
         {
-            admin.POST("/login", HandleLogin) // Login khong can JWT trong group con
             admin.GET("/bots", HandleGetBots)
             admin.GET("/bots/:id", HandleGetBotDetail)
             admin.POST("/command", HandleSendCommand)
