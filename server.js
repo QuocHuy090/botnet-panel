@@ -306,6 +306,32 @@ app.delete('/api/bots/:id', authenticateJWT, (req, res) => {
     db.run('INSERT INTO logs (level, source, message) VALUES (?,?,?)', ['info', 'system', 'Bot deleted: ' + botId]);
     res.json({ status: 'deleted' });
 });
+// API LẤY PENDING COMMANDS CHO BOT
+app.get('/api/bots/:id/commands/pending', (req, res) => {
+    const botId = req.params.id;
+    if (dbMode === 'better-sqlite3') {
+        const cmds = db.prepare("SELECT * FROM commands WHERE bot_id=? AND status='pending' ORDER BY created_at ASC LIMIT 5").all(botId);
+        cmds.forEach(c => db.prepare("UPDATE commands SET status='sent', executed_at=CURRENT_TIMESTAMP WHERE command_id=?").run(c.command_id));
+        res.json({ commands: cmds || [] });
+    } else {
+        db.all("SELECT * FROM commands WHERE bot_id=? AND status='pending' ORDER BY created_at ASC LIMIT 5", [botId], (err, cmds) => {
+            if (cmds) cmds.forEach(c => db.run("UPDATE commands SET status='sent', executed_at=CURRENT_TIMESTAMP WHERE command_id=?", [c.command_id]));
+            res.json({ commands: cmds || [] });
+        });
+    }
+});
+
+// API GỬI KẾT QUẢ COMMAND
+app.post('/api/bots/:id/command_result', (req, res) => {
+    const botId = req.params.id;
+    const { command_id, result } = req.body;
+    if (dbMode === 'better-sqlite3') {
+        db.prepare("UPDATE commands SET status='executed', result=? WHERE command_id=?").run(JSON.stringify(result), command_id);
+    } else {
+        db.run("UPDATE commands SET status='executed', result=? WHERE command_id=?", [JSON.stringify(result), command_id]);
+    }
+    res.json({ status: 'ok' });
+});
 // ============================================================
 // WEBSOCKET
 // ============================================================
