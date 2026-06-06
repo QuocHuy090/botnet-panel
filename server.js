@@ -272,6 +272,25 @@ app.post('/api/bot_data', (req, res) => {
     res.json({ status: 'ok' });
 });
 // ============================================================
+// API DELETE BOT
+// ============================================================
+app.delete('/api/bots/:id', authenticateJWT, (req, res) => {
+    const botId = req.params.id;
+    if (dbMode === 'better-sqlite3') {
+        db.prepare('DELETE FROM bot_data WHERE bot_id = ?').run(botId);
+        db.prepare('DELETE FROM attack_bots WHERE bot_id = ?').run(botId);
+        db.prepare('DELETE FROM commands WHERE bot_id = ?').run(botId);
+        db.prepare('DELETE FROM bots WHERE bot_id = ?').run(botId);
+    } else {
+        db.run('DELETE FROM bot_data WHERE bot_id = ?', [botId]);
+        db.run('DELETE FROM attack_bots WHERE bot_id = ?', [botId]);
+        db.run('DELETE FROM commands WHERE bot_id = ?', [botId]);
+        db.run('DELETE FROM bots WHERE bot_id = ?', [botId]);
+    }
+    db.run('INSERT INTO logs (level, source, message) VALUES (?,?,?)', ['info', 'system', 'Bot deleted: ' + botId]);
+    res.json({ status: 'deleted' });
+});
+// ============================================================
 // WEBSOCKET
 // ============================================================
 const wss = new WebSocket.Server({ server });
@@ -382,14 +401,6 @@ wss.on('connection', (ws, req) => {
 setInterval(() => { wss.clients.forEach(ws => { if (ws.isAlive === false) return ws.terminate(); ws.isAlive = false; ws.ping(); }); }, 30000);
 
 server.listen(PORT, () => {
-    // Tự động set offline bot không heartbeat sau 120 giây
-setInterval(() => {
-    if (dbMode === 'better-sqlite3') {
-        db.prepare("UPDATE bots SET status='offline' WHERE status='online' AND last_seen < datetime('now', '-2 minutes')").run();
-    } else {
-        db.run("UPDATE bots SET status='offline' WHERE status='online' AND last_seen < datetime('now', '-2 minutes')");
-    }
-}, 30000);
     console.log(`[+] Server running on port ${PORT}`);
     console.log(`[+] API: http://localhost:${PORT}/api`);
     console.log(`[+] WebSocket: ws://localhost:${PORT}`);
