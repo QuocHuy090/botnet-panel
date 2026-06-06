@@ -8,6 +8,7 @@
 package main
 
 import (
+    "database/sql"
     "encoding/hex"
     "encoding/json"
     "log"
