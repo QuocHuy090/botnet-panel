@@ -11,3 +11,4 @@ services:
         value: "release"
       - key: DB_PATH
         value: "/tmp/c2_botnet.db"
+    rootDir: server
