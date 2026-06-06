@@ -100,19 +100,11 @@ func main() {
         }
     }()
 
-    // Tao TLS config
-    tlsConfig := &tls.Config{
-        MinVersion: tls.VersionTLS12,
-        CurvePreferences: []tls.CurveID{
-            tls.X25519,
-            tls.CurveP256,
-        },
-    }
     
-    server := &http.Server{
-        Addr:      ":" + AppConfig.Port,
-        Handler:   router,
-        TLSConfig: tlsConfig,
+    
+        server := &http.Server{
+        Addr:    ":" + AppConfig.Port,
+        Handler: router,
     }
     
     log.Printf("[SERVER] Dang lang nghe tren cang %s (TLS)", AppConfig.Port)
