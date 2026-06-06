@@ -101,10 +101,7 @@ func main() {
     }()
     
     // Kiem tra TLS cert, neu chua co thi tu sinh
-    if _, err := os.Stat(AppConfig.CertFile); os.IsNotExist(err) {
-        log.Println("[TLS] Chung chi khong tim thay, dang tu sinh...")
-        generateSelfSignedCert(AppConfig.CertFile, AppConfig.KeyFile)
-    }
+
     
     // Tao TLS config
     tlsConfig := &tls.Config{
@@ -124,7 +121,7 @@ func main() {
     log.Printf("[SERVER] Dang lang nghe tren cang %s (TLS)", AppConfig.Port)
     log.Printf("[SERVER] Web Panel: https://%s:%s/", AppConfig.Domain, AppConfig.Port)
     
-    err := server.ListenAndServeTLS(AppConfig.CertFile, AppConfig.KeyFile)
+    server.ListenAndServe()
     if err != nil {
         log.Fatal("[SERVER] Loi khoi dong server: ", err)
     }
