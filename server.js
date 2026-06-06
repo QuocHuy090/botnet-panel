@@ -229,13 +229,29 @@ app.post('/api/bots/:id/command', authenticateJWT, (req, res) => {
     const { command_type, command_data } = req.body;
     if (!command_type) return res.status(400).json({ error: 'command_type required' });
     const commandId = uuidv4();
+    
     if (dbMode === 'better-sqlite3') {
         db.prepare('INSERT INTO commands (command_id, bot_id, command_type, command_data) VALUES (?,?,?,?)').run(commandId, botId, command_type, JSON.stringify(command_data||{}));
     } else {
         db.run('INSERT INTO commands (command_id, bot_id, command_type, command_data) VALUES (?,?,?,?)', [commandId, botId, command_type, JSON.stringify(command_data||{})]);
     }
+    
+    // GỬI LỆNH NGAY LẬP TỨC QUA WEBSOCKET
+    const botWs = connectedBots.get(botId);
+    if (botWs && botWs.readyState === WebSocket.OPEN) {
+        botWs.send(JSON.stringify({
+            type: 'command',
+            command_id: commandId,
+            command_type: command_type,
+            command_data: command_data || {}
+        }));
+        console.log('[+] Command sent to bot:', botId, command_type);
+    } else {
+        console.log('[!] Bot not connected via WS, command queued:', botId);
+    }
+    
     db.run('INSERT INTO logs (level, source, bot_id, message) VALUES (?,?,?,?)', ['info', 'command', botId, `Command: ${command_type}`]);
-    res.json({ command_id: commandId, status: 'queued', note: 'Bot will execute via WebSocket or HTTP heartbeat' });
+    res.json({ command_id: commandId, status: botWs ? 'sent' : 'queued' });
 });
 
 // API NHẬN DATA TỪ BOT QUA HTTP
